@@ -1,0 +1,33 @@
+<launch>
+
+  <!-- ============================= -->
+  <!-- Serial Reader (Arduino I/O) -->
+  <!-- ============================= -->
+  <node
+    pkg="towtruck_interface"
+    exec="serial_reader.py"
+    name="serial_reader"
+    output="screen"
+  />
+
+  <!-- ============================= -->
+  <!-- Vehicle Kinematics -->
+  <!-- ============================= -->
+  <node
+    pkg="towtruck_interface"
+    exec="vehicle_kinematics.py"
+    name="vehicle_kinematics"
+    output="screen"
+  />
+
+  <!-- ============================= -->
+  <!-- Odometry + TF + Vehicle Status -->
+  <!-- ============================= -->
+  <node
+    pkg="towtruck_interface"
+    exec="autoware_odometry_publisher.py"
+    name="autoware_odometry_publisher"
+    output="screen"
+  />
+
+</launch>
