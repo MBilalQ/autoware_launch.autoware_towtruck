@@ -85,3 +85,13 @@ class AutowareOdometryPublisher(Node):
         steer.steering_tire_angle = float(self.steering)
 
         self.steer_pub.publish(steer)
+
+def main ():
+    rclpy.init()
+    node = AutowareOdometryPublisher()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
