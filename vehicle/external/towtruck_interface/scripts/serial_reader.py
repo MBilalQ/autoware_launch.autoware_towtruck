@@ -23,8 +23,8 @@ def main():
     pub_float_frequency = node.create_publisher(Float32, 'frequency_data', 10)  # Publisher for frequency data
     pub_float_steering_angle = node.create_publisher(Float32, 'steering_angle_data', 10)  # Publisher for steering angle data
 
-    arduino_frequency = restart_serial(node, '/dev/arduino_wheels', 115200) 
-    arduino_steering = restart_serial(node, '/dev/arduino_steering', 115200)
+    arduino_frequency = restart_serial(node, '/dev/arduino_aw_wheels', 115200) 
+    arduino_steering = restart_serial(node, '/dev/arduino_aw_steering', 115200)
 
     try:
         while rclpy.ok():
@@ -42,7 +42,7 @@ def main():
                         node.get_logger().warn(f'Received invalid frequency data: {line}')
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
-                arduino_frequency = restart_serial(node, '/dev/arduino_wheels', 115200) 
+                arduino_frequency = restart_serial(node, '/dev/arduino_aw_wheels', 115200) 
 
                 # Read steering angle data
             try:
@@ -58,7 +58,7 @@ def main():
                         node.get_logger().warn(f'Received invalid steering angle data: {line}')
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
-                arduino_steering = restart_serial(node, '/dev/arduino_steering', 115200)
+                arduino_steering = restart_serial(node, '/dev/arduino_aw_steering', 115200)
 
     except KeyboardInterrupt:
         pass  # Allow exiting with Ctrl-C
