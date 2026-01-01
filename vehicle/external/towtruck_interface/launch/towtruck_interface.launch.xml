@@ -30,4 +30,14 @@
     output="screen"
   />
 
+  <!-- ============================= -->
+  <!-- Autoware Control to Arduino -->
+  <!-- ============================= -->
+  <node
+    pkg="towtruck_interface"
+    exec="autoware_control.py"
+    name="autoware_control"
+    output="screen"
+  />
+
 </launch>
