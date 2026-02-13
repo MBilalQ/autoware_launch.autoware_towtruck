@@ -86,14 +86,14 @@ class AutowareArduinoControl(Node):
     def send_packet(self, link, dev_name):
         try:
             send_size = 0
-            # Packet structure matching your Arduino
-            send_size += link.tx_obj(chr(1 if self.reinitialize else 0), send_size)
-            send_size += link.tx_obj(chr(1 if self.manual_mode else 0), send_size)
-            send_size += link.tx_obj(chr(1 if self.brake_active else 0), send_size)
-            send_size += link.tx_obj(chr(1 if self.reverse_mode else 0), send_size)
-            send_size += link.tx_obj(int(self.speed), send_size)
-            send_size += link.tx_obj(int(self.steering_angle), send_size)
-            send_size += link.tx_obj(chr(1 if self.debug_mode else 0), send_size)
+            # CORRECTED: send_size = link.tx_obj(...) instead of +=
+            send_size = link.tx_obj(chr(1 if self.reinitialize else 0), send_size)
+            send_size = link.tx_obj(chr(1 if self.manual_mode else 0), send_size)
+            send_size = link.tx_obj(chr(1 if self.brake_active else 0), send_size)
+            send_size = link.tx_obj(chr(1 if self.reverse_mode else 0), send_size)
+            send_size = link.tx_obj(int(self.speed), send_size)
+            send_size = link.tx_obj(int(self.steering_angle), send_size)
+            send_size = link.tx_obj(chr(1 if self.debug_mode else 0), send_size)
             
             link.send(send_size)
         except Exception as e:

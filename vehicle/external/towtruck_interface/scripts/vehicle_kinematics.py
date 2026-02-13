@@ -86,22 +86,22 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
         x_msg = Float32()
         x_msg.data = self.x
         self.pub_x.publish(x_msg)
-        self.get_logger().info(f'Published x: {self.x}')
+        # self.get_logger().info(f'Published x: {self.x}')
 
         y_msg = Float32()
         y_msg.data = self.y
         self.pub_y.publish(y_msg)
-        self.get_logger().info(f'Published y: {self.y}')
+        # self.get_logger().info(f'Published y: {self.y}')
 
         theta_msg = Float32()
         theta_msg.data = self.theta
         self.pub_theta.publish(theta_msg)
-        self.get_logger().info(f'Published theta: {self.theta}')
+        # self.get_logger().info(f'Published theta: {self.theta}')
         
         v_msg = Float32()
         v_msg.data = self.v
         self.pub_v.publish(v_msg)
-        self.get_logger().info(f'Published v: {self.v}')
+        # self.get_logger().info(f'Published v: {self.v}')
 
 def main(args=None): 
     rclpy.init(args=args)  # Initialize

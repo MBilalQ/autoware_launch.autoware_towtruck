@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from autoware_vehicle_msgs.msg import VelocityReport, SteeringReport
+from autoware_vehicle_msgs.msg import VelocityReport, SteeringReport, ControlModeReport, GearReport, TurnIndicatorsReport, HazardLightsReport 
 from std_msgs.msg import Float32 
 import math
 
@@ -25,6 +25,12 @@ class AutowareOdometryPublisher(Node):
 
         self.steer_pub = self.create_publisher(
             SteeringReport, "/vehicle/status/steering_status", 10)
+        
+        # NEW: Safety Heartbeat Publishers (Makes the Auto button appear)
+        self.mode_pub = self.create_publisher(ControlModeReport, "/vehicle/status/control_mode", 10)
+        self.gear_pub = self.create_publisher(GearReport, "/vehicle/status/gear_status", 10)
+        self.turn_pub = self.create_publisher(TurnIndicatorsReport, "/vehicle/status/turn_indicators_status", 10)
+        self.hazard_pub = self.create_publisher(HazardLightsReport, "/vehicle/status/hazard_lights_status", 10)
 
         # Publish at 50Hz to ensure EKF is happy
         self.create_timer(0.02, self.publish_status)
@@ -55,6 +61,32 @@ class AutowareOdometryPublisher(Node):
         steer.steering_tire_angle = float(self.steering)
 
         self.steer_pub.publish(steer)
+
+
+        # ---------------- Control Mode Report ----------
+        # 1 = AUTONOMOUS mode. Tells RViz the car is ready.
+        mode = ControlModeReport()
+        mode.stamp = now
+        mode.mode = 1 
+        self.mode_pub.publish(mode)
+
+        # ---------------- Gear Report ------------------
+        # 2 = DRIVE gear. Tells RViz the car is in gear.
+        gear = GearReport()
+        gear.stamp = now
+        gear.report = GearReport.DRIVE 
+        self.gear_pub.publish(gear)
+
+        # ---------------- Lights (Dummy OFF) ---------------
+        turn = TurnIndicatorsReport()
+        turn.stamp = now
+        turn.report = TurnIndicatorsReport.DISABLE # 1 = Disable/Off
+        self.turn_pub.publish(turn)
+
+        hazard = HazardLightsReport()
+        hazard.stamp = now
+        hazard.report = HazardLightsReport.DISABLE # 1 = Disable/Off
+        self.hazard_pub.publish(hazard)
 
 def main ():
     rclpy.init()

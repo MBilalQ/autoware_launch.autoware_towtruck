@@ -3,6 +3,7 @@
 import rclpy  # ROS 2 client library for Python
 from std_msgs.msg import Float32  # For publishing frequency and steering angle in this format
 import serial  # To use Serial (in Arduino IDE) for communication
+import time
 
 def restart_serial(node, serial_dev_name, baud_rate):
     device_connected = False
@@ -30,35 +31,43 @@ def main():
         while rclpy.ok():
             # Read frequency data
             try:
-                if arduino_frequency.in_waiting > 0:
+                while arduino_frequency.in_waiting > 0:
                     line = arduino_frequency.readline().decode('utf-8').rstrip()
                     try:
                         frq = float(line)  # Convert the frequency data to float
                         msg_float = Float32()
                         msg_float.data = frq
                         pub_float_frequency.publish(msg_float)  # Publish frequency data
-                        node.get_logger().info(f'Published frequency data: {frq}')
+                        # node.get_logger().info(f'Published frequency data: {frq}')
                     except ValueError:
-                        node.get_logger().warn(f'Received invalid frequency data: {line}')
+                        # node.get_logger().warn(f'Received invalid frequency data: {line}')
+                        pass
+
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
                 arduino_frequency = restart_serial(node, '/dev/arduino_wheels', 115200) 
 
                 # Read steering angle data
             try:
-                if arduino_steering.in_waiting > 0:
+                while arduino_steering.in_waiting > 0:
                     line = arduino_steering.readline().decode('utf-8').rstrip()
                     try:
                         steering_angle = float(line)  # Convert the steering angle data to float
                         msg_float = Float32()
                         msg_float.data = steering_angle
                         pub_float_steering_angle.publish(msg_float)  # Publish steering angle data
-                        node.get_logger().info(f'Published steering angle data: {steering_angle}')
+                        # node.get_logger().info(f'Published steering angle data: {steering_angle}')
                     except ValueError:
-                        node.get_logger().warn(f'Received invalid steering angle data: {line}')
+                        # node.get_logger().warn(f'Received invalid steering angle data: {line}')
+                        pass
+
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
                 arduino_steering = restart_serial(node, '/dev/arduino_steering', 115200)
+
+            # This forces the script to pause for 0.02 seconds, freeing up 
+            # massive amounts of CPU for Autoware's path planner.
+            time.sleep(0.02)
 
     except KeyboardInterrupt:
         pass  # Allow exiting with Ctrl-C
