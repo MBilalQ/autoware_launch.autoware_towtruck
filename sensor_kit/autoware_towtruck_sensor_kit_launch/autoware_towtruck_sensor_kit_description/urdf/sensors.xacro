@@ -16,7 +16,7 @@
   />
 
   <!-- embedded sensors -->
-  <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
+  <!-- <xacro:include filename="$(find velodyne_description)/urdf/VLP-16.urdf.xacro"/>
   <xacro:VLP-16 parent="base_link" name="velodyne_rear" topic="velodyne_rear/velodyne_points" hz="10" samples="220" gpu="false">
     <origin
       xyz="${calibration['base_link']['velodyne_rear_base_link']['x']}
@@ -26,5 +26,5 @@
            ${calibration['base_link']['velodyne_rear_base_link']['pitch']}
            ${calibration['base_link']['velodyne_rear_base_link']['yaw']}"
     />
-  </xacro:VLP-16>
+  </xacro:VLP-16> -->
 </robot>
