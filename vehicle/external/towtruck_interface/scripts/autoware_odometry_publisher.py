@@ -50,7 +50,7 @@ class AutowareOdometryPublisher(Node):
         vel = VelocityReport()
         vel.header.stamp = now
         vel.header.frame_id = "base_link" 
-        vel.longitudinal_velocity = float(self.v)
+        vel.longitudinal_velocity = 0.0 #float(self.v)
         vel.lateral_velocity = 0.0 # Assuming non-holonomic
         vel.heading_rate = 0.0     # Optional, but EKF can calculate it from steering
         
@@ -58,8 +58,8 @@ class AutowareOdometryPublisher(Node):
 
         # ---------------- Steering Report --------------
         steer = SteeringReport()
+        steer.stamp = now
         steer.steering_tire_angle = float(self.steering)
-
         self.steer_pub.publish(steer)
 
 
@@ -74,7 +74,7 @@ class AutowareOdometryPublisher(Node):
         # 2 = DRIVE gear. Tells RViz the car is in gear.
         gear = GearReport()
         gear.stamp = now
-        gear.report = GearReport.DRIVE 
+        gear.report = 22 
         self.gear_pub.publish(gear)
 
         # ---------------- Lights (Dummy OFF) ---------------

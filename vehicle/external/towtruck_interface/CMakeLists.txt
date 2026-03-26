@@ -29,6 +29,8 @@ install(
     scripts/vehicle_kinematics.py
     scripts/autoware_odometry_publisher.py
     scripts/autoware_control.py
+    scripts/livox_to_autoware.py
+    scripts/livox_downsample.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
