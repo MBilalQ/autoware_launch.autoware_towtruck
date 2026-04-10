@@ -13,7 +13,7 @@
 
     sensor_points:
       # Tolerance of timestamp difference between current time and sensor pointcloud. [sec]
-      timeout_sec: 1.0
+      timeout_sec: 5.0
 
       # Required distance of input sensor points. [m]
       # If the max distance of input sensor points is lower than this value, the scan matching will not be performed.
@@ -29,13 +29,13 @@
       step_size: 0.1
 
       # The ND voxel grid resolution
-      resolution: 2.0
+      resolution: 4.0
 
       # The number of iterations required to calculate alignment
-      max_iterations: 30
+      max_iterations: 15
 
       # Number of threads used for parallel computing
-      num_threads: 4
+      num_threads: 2
 
       regularization:
         enable: false
@@ -46,12 +46,12 @@
 
     initial_pose_estimation:
       # The number of particles to estimate initial pose
-      particles_num: 200
+      particles_num: 20
 
       # The number of initial random trials in the TPE (Tree-Structured Parzen Estimator).
       # This value should be equal to or less than 'initial_estimate_particles_num' and more than 0.
       # If it is equal to 'initial_estimate_particles_num', the search will be the same as a full random search.
-      n_startup_trials: 100
+      n_startup_trials: 10
 
 
     validation:
@@ -65,7 +65,7 @@
       initial_to_result_distance_tolerance_m: 3.0
 
       # The execution time which means probably NDT cannot matches scans properly. [ms]
-      critical_upper_bound_exe_time_ms: 100.0
+      critical_upper_bound_exe_time_ms: 5000.0
 
       # Tolerance for the number of times rejected estimation results consecutively
       skipping_publish_num: 5
@@ -82,7 +82,7 @@
 
       # If converged_param_type is 1
       # Threshold for deciding whether to trust the estimation result
-      converged_param_nearest_voxel_transformation_likelihood: 2.3
+      converged_param_nearest_voxel_transformation_likelihood: 1.0
 
       # Scan matching score based on no ground LiDAR scan
       no_ground_points:
@@ -128,7 +128,7 @@
       update_distance: 20.0
 
       # Dynamic map loading loading radius
-      map_radius: 150.0
+      map_radius: 50.0
 
       # Radius of input LiDAR range (used for diagnostics of dynamic map loading)
-      lidar_radius: 100.0
+      lidar_radius: 30.0
