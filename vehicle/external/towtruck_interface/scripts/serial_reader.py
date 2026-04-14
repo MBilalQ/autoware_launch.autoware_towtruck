@@ -2,8 +2,23 @@
 
 import rclpy
 from std_msgs.msg import Float32
-import serial
 import time  # Required for the micro-sleep
+
+try:
+    import serial
+except ModuleNotFoundError:
+    serial = None
+
+
+def decode_float(raw_line):
+    text = raw_line.decode('utf-8', errors='ignore').strip()
+    if not text:
+        return None
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 def restart_serial(node, serial_dev_name, baud_rate):
     device_connected = False
@@ -19,7 +34,16 @@ def restart_serial(node, serial_dev_name, baud_rate):
 
 def main():
     rclpy.init()
-    node = rclpy.create_node('ros_arduino_communication')
+    node = rclpy.create_node('serial_reader')
+
+    if serial is None:
+        node.get_logger().error(
+            "Python module 'serial' is missing. Install 'python3-serial' in the Autoware runtime "
+            "before launching towtruck_interface."
+        )
+        node.destroy_node()
+        rclpy.shutdown()
+        raise SystemExit(1)
     
     pub_float_frequency = node.create_publisher(Float32, 'frequency_data', 10)
     pub_float_steering_angle = node.create_publisher(Float32, 'steering_angle_data', 10)
@@ -31,13 +55,11 @@ def main():
         while rclpy.ok():
             try:
                 if arduino_frequency.in_waiting > 0:
-                    line = arduino_frequency.readline().decode('utf-8').rstrip()
-                    try:
+                    value = decode_float(arduino_frequency.readline())
+                    if value is not None:
                         msg_float = Float32()
-                        msg_float.data = float(line)
+                        msg_float.data = value
                         pub_float_frequency.publish(msg_float)
-                    except ValueError:
-                        pass # Silently drop garbage data to save CPU
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
                 arduino_frequency = restart_serial(node, '/dev/arduino_wheels', 115200) 
@@ -45,13 +67,11 @@ def main():
             # --- Read steering angle data ---
             try:
                 if arduino_steering.in_waiting > 0:
-                    line = arduino_steering.readline().decode('utf-8').rstrip()
-                    try:
+                    value = decode_float(arduino_steering.readline())
+                    if value is not None:
                         msg_float = Float32()
-                        msg_float.data = float(line)
+                        msg_float.data = value
                         pub_float_steering_angle.publish(msg_float)
-                    except ValueError:
-                        pass # Silently drop garbage data to save CPU
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
                 arduino_steering = restart_serial(node, '/dev/arduino_steering', 115200)

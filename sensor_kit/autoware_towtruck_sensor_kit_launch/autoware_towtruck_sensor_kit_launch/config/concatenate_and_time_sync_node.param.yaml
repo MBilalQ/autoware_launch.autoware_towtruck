@@ -4,19 +4,18 @@
     rosbag_length: 10.0
     maximum_queue_size: 5
     timeout_sec: 0.2
-    is_motion_compensated: true
+    # Keep this off for the current single-LiDAR bring-up path so the
+    # concatenation node can publish without requiring vehicle twist input.
+    is_motion_compensated: false
     publish_synchronized_pointcloud: true
     keep_input_frame_in_synchronized_pointcloud: true
     publish_previous_but_late_pointcloud: false
     synchronized_pointcloud_postfix: pointcloud
     input_twist_topic_type: twist
-    input_topics: [
-                    "/sensing/lidar/right/pointcloud_before_sync",
-                    "/sensing/lidar/top/pointcloud_before_sync",
-                    "/sensing/lidar/left/pointcloud_before_sync",
-                ]
+    input_topics:
+      - /sensing/lidar/top/pointcloud_before_sync
     output_frame: base_link
     matching_strategy:
       type: advanced
-      lidar_timestamp_offsets: [0.0, 0.015, 0.016]
-      lidar_timestamp_noise_window: [0.01, 0.01, 0.01]
+      lidar_timestamp_offsets: [0.0]
+      lidar_timestamp_noise_window: [0.01]

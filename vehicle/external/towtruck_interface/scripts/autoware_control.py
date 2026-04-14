@@ -5,8 +5,11 @@ from rclpy.node import Node
 # CORRECT IMPORT for newer Autoware Universe
 from autoware_control_msgs.msg import Control
 import math
-import time
-from pySerialTransfer import pySerialTransfer as txfer
+
+try:
+    from pySerialTransfer import pySerialTransfer as txfer
+except ModuleNotFoundError:
+    txfer = None
 
 class AutowareArduinoControl(Node):
     def __init__(self):
@@ -14,8 +17,10 @@ class AutowareArduinoControl(Node):
 
         # --- Configuration ---
         self.control_update_period = 0.06 # 20Hz
-        self.wheel_radius = 0.2032
-        self.pulses_per_rev = 740 * 1.1
+        self.wheel_radius = float(self.declare_parameter('wheel_radius', 0.2032).value)
+        self.pulses_per_rev = float(
+            self.declare_parameter('pulses_per_revolution', 740 * 1.1).value
+        )
 
         # --- SUBSCRIBER ---
         # Updated to subscribe to 'Control' message on the Universe topic
@@ -27,6 +32,8 @@ class AutowareArduinoControl(Node):
         )
 
         # --- SERIAL CONNECTIONS ---
+        self.link_steering = None
+        self.link_wheels = None
         try:
             self.link_steering = txfer.SerialTransfer('arduino_steering', baud=115200)
             self.link_steering.open()
@@ -47,6 +54,7 @@ class AutowareArduinoControl(Node):
         self.speed = 0
         self.steering_angle = 0
         self.debug_mode = False
+        self.received_first_cmd = False
 
         self.create_timer(self.control_update_period, self.send_commands)
 
@@ -54,6 +62,12 @@ class AutowareArduinoControl(Node):
         """
         Converts autoware_control_msgs/Control -> Arduino Variables
         """
+        self.get_logger().info(
+            f"RECEIVED control_cmd: v={msg.longitudinal.velocity}, "
+            f"steer={msg.lateral.steering_tire_angle}"
+        )
+        self.received_first_cmd = True
+
         # 1. VELOCITY (in msg.longitudinal.velocity)
         target_v = msg.longitudinal.velocity
         
@@ -78,9 +92,12 @@ class AutowareArduinoControl(Node):
         self.steering_angle = int(math.degrees(steer_rad))
 
     def send_commands(self):
-        if self.link_wheels.connection.is_open:
+        if not self.received_first_cmd:
+            return
+
+        if self.link_wheels and self.link_wheels.connection.is_open:
             self.send_packet(self.link_wheels, "wheels")
-        if self.link_steering.connection.is_open:
+        if self.link_steering and self.link_steering.connection.is_open:
             self.send_packet(self.link_steering, "steering")
 
     def send_packet(self, link, dev_name):
@@ -95,12 +112,27 @@ class AutowareArduinoControl(Node):
             send_size = link.tx_obj(int(self.steering_angle), send_size)
             send_size = link.tx_obj(chr(1 if self.debug_mode else 0), send_size)
             
+            self.get_logger().info(
+                f"{dev_name}: manual={self.manual_mode}, brake={self.brake_active}, "
+                f"reverse={self.reverse_mode}, speed={self.speed}, steer={self.steering_angle}"
+            )
             link.send(send_size)
         except Exception as e:
             self.get_logger().error(f"Error sending to {dev_name}: {e}")
 
 def main(args=None):
     rclpy.init(args=args)
+
+    if txfer is None:
+        node = rclpy.create_node('autoware_arduino_control')
+        node.get_logger().error(
+            "Python module 'pySerialTransfer' is missing. Install it in the Autoware runtime "
+            "before launching towtruck_interface, for example with 'pip install pySerialTransfer'."
+        )
+        node.destroy_node()
+        rclpy.shutdown()
+        raise SystemExit(1)
+
     node = AutowareArduinoControl()
     rclpy.spin(node)
     node.destroy_node()

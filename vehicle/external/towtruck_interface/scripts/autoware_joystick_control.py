@@ -6,9 +6,13 @@ from sensor_msgs.msg import Joy
 from autoware_control_msgs.msg import Control
 import math
 from enum import Enum
-from pySerialTransfer import pySerialTransfer as txfer
 from numpy import interp
 from collections import deque
+
+try:
+    from pySerialTransfer import pySerialTransfer as txfer
+except ModuleNotFoundError:
+    txfer = None
 
 # --- XBOX Controller Mappings ---
 class Button(Enum):
@@ -40,14 +44,18 @@ class AutowareArduinoInterface(Node):
 
         # --- Configuration ---
         self.control_update_period = 0.06 # 20Hz
-        self.wheel_radius = 0.2032
-        self.pulses_per_rev = 740 * 1.1
+        self.wheel_radius = float(self.declare_parameter('wheel_radius', 0.2032).value)
+        self.pulses_per_rev = float(
+            self.declare_parameter('pulses_per_revolution', 740 * 1.1).value
+        )
 
         # --- SUBSCRIBERS ---
         self.create_subscription(Joy, '/joy', self.joy_callback, 1)
         self.create_subscription(Control, '/control/command/control_cmd', self.control_callback, 10)
 
         # --- SERIAL CONNECTIONS ---
+        self.link_steering = None
+        self.link_wheels = None
         try:
             self.link_steering = txfer.SerialTransfer('arduino_steering', baud=115200)
             self.link_steering.open()
@@ -65,6 +73,7 @@ class AutowareArduinoInterface(Node):
         self.teleop_mode = False
         self.reinitialize = False
         self.brake_active = False
+        self.brake_request = False
         self.reverse_mode = False
         self.debug_mode = False
 
@@ -126,7 +135,7 @@ class AutowareArduinoInterface(Node):
             debug_mode_button = msg.buttons[Button.Y.value] 
 
             self.reinitialize = reinit_button == 1
-            self.brake_active = brake_button == 1
+            self.brake_request = brake_button == 1
 
             # Mode Switching
             if manual_button == 1:
@@ -170,13 +179,12 @@ class AutowareArduinoInterface(Node):
             current_target_speed = self.auto_speed
             current_target_steer = self.auto_steering_angle
             self.reverse_mode = self.auto_reverse
-            # Auto-brake if speed is very low
-            if self.auto_speed == 0:
-                self.brake_active = True
+            self.brake_active = self.brake_request or self.auto_speed == 0
         else:
             current_target_speed = self.manual_speed
             current_target_steer = self.manual_steering
             self.reverse_mode = self.manual_reverse
+            self.brake_active = self.brake_request
 
         # 2. Apply Brake Override
         if self.brake_active:
@@ -190,9 +198,9 @@ class AutowareArduinoInterface(Node):
             self.steering_angle = int(sum(self.steering_angle_window) / len(self.steering_angle_window))
 
         # 4. Transmit over Serial
-        if hasattr(self, 'link_wheels') and self.link_wheels.connection.is_open:
+        if self.link_wheels and self.link_wheels.connection.is_open:
             self.send_packet(self.link_wheels, "wheels")
-        if hasattr(self, 'link_steering') and self.link_steering.connection.is_open:
+        if self.link_steering and self.link_steering.connection.is_open:
             self.send_packet(self.link_steering, "steering")
 
     def send_packet(self, link, dev_name):
@@ -212,6 +220,17 @@ class AutowareArduinoInterface(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+
+    if txfer is None:
+        node = rclpy.create_node('autoware_arduino_interface')
+        node.get_logger().error(
+            "Python module 'pySerialTransfer' is missing. Install it in the Autoware runtime "
+            "before launching towtruck_interface, for example with 'pip install pySerialTransfer'."
+        )
+        node.destroy_node()
+        rclpy.shutdown()
+        raise SystemExit(1)
+
     node = AutowareArduinoInterface()
     try:
         rclpy.spin(node)

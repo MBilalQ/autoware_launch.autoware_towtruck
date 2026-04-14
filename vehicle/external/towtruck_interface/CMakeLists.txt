@@ -27,9 +27,15 @@ install(
   PROGRAMS
     scripts/serial_reader.py
     scripts/vehicle_kinematics.py
+    scripts/localization_bridge.py
     scripts/autoware_odometry_publisher.py
     scripts/autoware_control.py
     scripts/autoware_joystick_control.py
+    scripts/empty_occupancy_grid_publisher.py
+    scripts/empty_obstacle_pointcloud_publisher.py
+    scripts/disabled_vehicle_signals_publisher.py
+    scripts/dummy_operation_mode_publisher.py
+    scripts/dummy_mrm_state_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

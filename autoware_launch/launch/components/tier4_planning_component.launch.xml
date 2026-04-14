@@ -2,10 +2,18 @@
 <launch>
   <!-- NOTE: optional parameters are written here -->
   <arg name="module_preset" default="default"/>
+  <arg
+    name="module_preset_file"
+    default="$(find-pkg-share autoware_launch)/config/planning/preset/$(var module_preset)_preset.yaml"
+  />
   <arg name="enable_all_modules_auto_mode" default="false"/>
   <arg name="is_simulation" default="false"/>
   <arg name="use_sim_time" default="false"/>
   <arg name="vehicle_model" default="sample_vehicle"/>
+  <arg
+    name="path_generator_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/path_generator/path_generator.param.yaml"
+  />
 
   <!-- Input topic parameters for planning modules -->
   <arg name="planning_input_objects_topic_name" default="/perception/object_recognition/objects"/>
@@ -19,7 +27,7 @@
     </include>
   </group>
 
-  <include file="$(find-pkg-share autoware_launch)/config/planning/preset/$(var module_preset)_preset.yaml"/>
+  <include file="$(var module_preset_file)"/>
 
   <include file="$(find-pkg-share tier4_planning_launch)/launch/planning.launch.xml">
     <arg name="vehicle_param_file" value="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
@@ -62,7 +70,7 @@
     <arg name="behavior_path_planner_drivable_area_expansion_param_path" value="$(var behavior_path_config_path)/drivable_area_expansion.param.yaml"/>
 
     <!-- path generator -->
-    <arg name="path_generator_param_path" value="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/path_generator/path_generator.param.yaml"/>
+    <arg name="path_generator_param_path" value="$(var path_generator_param_path)"/>
 
     <!-- hazard lights selector -->
     <arg name="hazard_lights_selector_param_path" value="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/common/autoware_hazard_lights_selector/hazard_lights_selector.param.yaml"/>

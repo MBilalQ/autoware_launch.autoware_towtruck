@@ -9,6 +9,10 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
 
     def __init__(self):
         super().__init__('kinematic_calculator')  # Name of our node to run the constructor as ROS 2 requires
+        self.wheel_radius = float(self.declare_parameter('wheel_radius', 0.2032).value)
+        self.wheel_base = float(self.declare_parameter('wheel_base', 1.17).value)
+        self.pulses_per_revolution = float(self.declare_parameter('pulses_per_revolution', 740 * 1.1).value)
+        self.sampling_time = float(self.declare_parameter('sampling_time', 0.05).value)
 
         # Subscriber for frequency data
         self.frequency_subscription = self.create_subscription(
@@ -62,21 +66,15 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
             self.phi = ( (sum(self.phi_array) / len(self.phi_array)))  # Average the phi values
             self.phi_array = []  # Clear the array after averaging
 
-        # Constants
-        wheel_radius = 0.2032  # Radius of the wheel (meters)
-        wheelbase = 1.17  # Distance between front and back wheels (meters)
-        pulses_per_revolution = 740*1.1
-        sampling_time = 0.05  # Sampling time (seconds)
-
         # Calculate the wheel speed (v)
-        self.v = (self.frequency * 2 * math.pi * wheel_radius) / pulses_per_revolution
+        self.v = (self.frequency * 2 * math.pi * self.wheel_radius) / self.pulses_per_revolution
 
         # Update the heading angle (theta)
-        self.theta += (self.v / wheelbase) * math.tan(math.radians(self.phi)) * sampling_time
+        self.theta += (self.v / self.wheel_base) * math.tan(math.radians(self.phi)) * self.sampling_time
 
         # Update x, y positions using integration over time
-        self.x += self.v * math.cos(self.theta) * sampling_time 
-        self.y += self.v * math.sin(self.theta) * sampling_time
+        self.x += self.v * math.cos(self.theta) * self.sampling_time 
+        self.y += self.v * math.sin(self.theta) * self.sampling_time
 	
 	# Convert the x,y positions to the world frame
 	#self.x= self.x0 * math.cos(self.theta) - self.y0 * math.sin(self.theta)
@@ -112,4 +110,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()  # Standard to run the file
-

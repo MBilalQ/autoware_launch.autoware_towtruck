@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from autoware_vehicle_msgs.msg import VelocityReport, SteeringReport, ControlModeReport, GearReport, TurnIndicatorsReport, HazardLightsReport 
+from autoware_vehicle_msgs.msg import (
+    ControlModeReport,
+    GearReport,
+    HazardLightsCommand,
+    HazardLightsReport,
+    SteeringReport,
+    TurnIndicatorsCommand,
+    TurnIndicatorsReport,
+    VelocityReport,
+)
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Float32 
 import math
 
@@ -9,6 +19,7 @@ class AutowareOdometryPublisher(Node):
 
     def __init__(self):
         super().__init__("autoware_odometry_publisher")
+        self.wheel_base = float(self.declare_parameter("wheel_base", 1.17).value)
 
         self.v = 0.0
         self.steering = 0.0
@@ -31,6 +42,17 @@ class AutowareOdometryPublisher(Node):
         self.gear_pub = self.create_publisher(GearReport, "/vehicle/status/gear_status", 10)
         self.turn_pub = self.create_publisher(TurnIndicatorsReport, "/vehicle/status/turn_indicators_status", 10)
         self.hazard_pub = self.create_publisher(HazardLightsReport, "/vehicle/status/hazard_lights_status", 10)
+        command_qos = QoSProfile(
+            depth=1,
+            reliability=ReliabilityPolicy.RELIABLE,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+        )
+        self.turn_cmd_pub = self.create_publisher(
+            TurnIndicatorsCommand, "/planning/turn_indicators_cmd", command_qos
+        )
+        self.hazard_cmd_pub = self.create_publisher(
+            HazardLightsCommand, "/planning/hazard_lights_cmd", command_qos
+        )
 
         # Publish at 50Hz to ensure EKF is happy
         self.create_timer(0.02, self.publish_status)
@@ -52,7 +74,9 @@ class AutowareOdometryPublisher(Node):
         vel.header.frame_id = "base_link" 
         vel.longitudinal_velocity = float(self.v)
         vel.lateral_velocity = 0.0 # Assuming non-holonomic
-        vel.heading_rate = 0.0     # Optional, but EKF can calculate it from steering
+        vel.heading_rate = 0.0 if self.wheel_base <= 1.0e-6 else float(
+            (self.v / self.wheel_base) * math.tan(self.steering)
+        )
         
         self.vel_pub.publish(vel)
 
@@ -87,6 +111,16 @@ class AutowareOdometryPublisher(Node):
         hazard.stamp = now
         hazard.report = HazardLightsReport.DISABLE # 1 = Disable/Off
         self.hazard_pub.publish(hazard)
+
+        turn_cmd = TurnIndicatorsCommand()
+        turn_cmd.stamp = now
+        turn_cmd.command = TurnIndicatorsCommand.DISABLE
+        self.turn_cmd_pub.publish(turn_cmd)
+
+        hazard_cmd = HazardLightsCommand()
+        hazard_cmd.stamp = now
+        hazard_cmd.command = HazardLightsCommand.DISABLE
+        self.hazard_cmd_pub.publish(hazard_cmd)
 
 def main ():
     rclpy.init()

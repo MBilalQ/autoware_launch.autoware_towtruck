@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- load parameter -->
+  <xacro:property name="vehicle_info" value="${xacro.load_yaml('$(find autonomous_towtruck_description)/config/vehicle_info.param.yaml')}"/>
+  <xacro:property name="wheel_base" value="${vehicle_info['/**']['ros__parameters']['wheel_base']}"/>
+  <xacro:property name="wheel_tread" value="${vehicle_info['/**']['ros__parameters']['wheel_tread']}"/>
+  <xacro:property name="front_overhang" value="${vehicle_info['/**']['ros__parameters']['front_overhang']}"/>
+  <xacro:property name="rear_overhang" value="${vehicle_info['/**']['ros__parameters']['rear_overhang']}"/>
+  <xacro:property name="left_overhang" value="${vehicle_info['/**']['ros__parameters']['left_overhang']}"/>
+  <xacro:property name="right_overhang" value="${vehicle_info['/**']['ros__parameters']['right_overhang']}"/>
+  <xacro:property name="vehicle_height" value="${vehicle_info['/**']['ros__parameters']['vehicle_height']}"/>
+  <xacro:property name="body_length" value="${wheel_base + front_overhang + rear_overhang}"/>
+  <xacro:property name="body_width" value="${wheel_tread + left_overhang + right_overhang}"/>
+  <xacro:property name="body_center_x" value="${(wheel_base + front_overhang - rear_overhang) / 2.0}"/>
+  <xacro:property name="body_center_z" value="${vehicle_height / 2.0}"/>
+
+  <xacro:property name="rear_wheel_radius" value="0.2"/>
+  <xacro:property name="rear_wheel_width" value="0.1"/>
+  <xacro:property name="front_wheel_radius" value="0.15"/>
+  <xacro:property name="front_wheel_width" value="0.245"/>
+
+  <!-- vehicle body -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="${body_center_x} 0 ${body_center_z}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${body_length} ${body_width} ${vehicle_height}"/>
+      </geometry>
+      <material name="body_material">
+        <color rgba="0.95 0.45 0.05 0.45"/>
+      </material>
+    </visual>
+
+    <visual>
+      <origin xyz="0 ${wheel_tread / 2.0} ${rear_wheel_radius}" rpy="${pi / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="${rear_wheel_radius}" length="${rear_wheel_width}"/>
+      </geometry>
+      <material name="wheel_material">
+        <color rgba="0.98 0.84 0.10 1.0"/>
+      </material>
+    </visual>
+
+    <visual>
+      <origin xyz="0 ${-wheel_tread / 2.0} ${rear_wheel_radius}" rpy="${pi / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="${rear_wheel_radius}" length="${rear_wheel_width}"/>
+      </geometry>
+      <material name="wheel_material"/>
+    </visual>
+
+    <visual>
+      <origin xyz="${wheel_base} 0 ${front_wheel_radius}" rpy="${pi / 2.0} 0 0"/>
+      <geometry>
+        <cylinder radius="${front_wheel_radius}" length="${front_wheel_width}"/>
+      </geometry>
+      <material name="front_wheel_material">
+        <color rgba="0.98 0.84 0.10 1.0"/>
+      </material>
+    </visual>
+
+    <collision>
+      <origin xyz="${body_center_x} 0 ${body_center_z}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${body_length} ${body_width} ${vehicle_height}"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>

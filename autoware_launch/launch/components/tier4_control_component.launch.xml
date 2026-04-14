@@ -2,7 +2,11 @@
 <launch>
   <!-- optional parameters are written here -->
   <arg name="module_preset" default="default"/>
-  <include file="$(find-pkg-share autoware_launch)/config/control/preset/$(var module_preset)_preset.yaml"/>
+  <arg
+    name="module_preset_file"
+    default="$(find-pkg-share autoware_launch)/config/control/preset/$(var module_preset)_preset.yaml"
+  />
+  <include file="$(var module_preset_file)"/>
 
   <arg name="lateral_controller_mode" default="mpc"/>
   <arg name="longitudinal_controller_mode" default="pid"/>

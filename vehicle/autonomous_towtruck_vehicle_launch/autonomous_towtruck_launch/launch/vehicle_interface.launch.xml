@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
+  <arg name="launch_serial_reader" default="true"/>
+  <arg name="launch_vehicle_kinematics" default="true"/>
+  <arg name="launch_localization_bridge" default="true"/>
+  <arg name="launch_odometry_publisher" default="true"/>
+  <arg name="launch_autoware_control" default="true"/>
+
+  <include file="$(find-pkg-share towtruck_interface)/launch/towtruck_interface.launch.xml">
+    <arg name="launch_serial_reader" value="$(var launch_serial_reader)"/>
+    <arg name="launch_vehicle_kinematics" value="$(var launch_vehicle_kinematics)"/>
+    <arg name="launch_localization_bridge" value="$(var launch_localization_bridge)"/>
+    <arg name="launch_odometry_publisher" value="$(var launch_odometry_publisher)"/>
+    <arg name="launch_autoware_control" value="$(var launch_autoware_control)"/>
+  </include>
+</launch>

@@ -1,0 +1,10 @@
+/**:
+  ros__parameters:
+    # This vehicle has no side mirrors. Keep a tiny dummy crop box inside the
+    # self-cropped vehicle volume so the mirror crop stage becomes a no-op.
+    min_longitudinal_offset: -0.001
+    max_longitudinal_offset: 0.001
+    min_lateral_offset: -0.001
+    max_lateral_offset: 0.001
+    min_height_offset: 0.999
+    max_height_offset: 1.001

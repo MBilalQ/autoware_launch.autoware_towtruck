@@ -1,4 +1,9 @@
 <launch>
+  <arg name="launch_serial_reader" default="true"/>
+  <arg name="launch_vehicle_kinematics" default="true"/>
+  <arg name="launch_localization_bridge" default="true"/>
+  <arg name="launch_odometry_publisher" default="true"/>
+  <arg name="launch_autoware_control" default="true"/>
 
   <!-- ============================= -->
   <!-- Serial Reader (Arduino I/O) -->
@@ -8,6 +13,7 @@
     exec="serial_reader.py"
     name="serial_reader"
     output="screen"
+    if="$(var launch_serial_reader)"
   />
 
   <!-- ============================= -->
@@ -18,6 +24,18 @@
     exec="vehicle_kinematics.py"
     name="vehicle_kinematics"
     output="screen"
+    if="$(var launch_vehicle_kinematics)"
+  />
+
+  <!-- ============================= -->
+  <!-- Localization Bridge -->
+  <!-- ============================= -->
+  <node
+    pkg="towtruck_interface"
+    exec="localization_bridge.py"
+    name="localization_bridge"
+    output="screen"
+    if="$(var launch_localization_bridge)"
   />
 
   <!-- ============================= -->
@@ -28,16 +46,18 @@
     exec="autoware_odometry_publisher.py"
     name="autoware_odometry_publisher"
     output="screen"
+    if="$(var launch_odometry_publisher)"
   />
 
   <!-- ============================= -->
   <!-- Autoware Control to Arduino -->
   <!-- ============================= -->
-  <!-- <node
+  <node
     pkg="towtruck_interface"
     exec="autoware_control.py"
     name="autoware_control"
     output="screen"
-  /> -->
+    if="$(var launch_autoware_control)"
+  />
 
 </launch>

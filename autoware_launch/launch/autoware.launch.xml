@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
   <!-- Essential parameters -->
-  <arg name="map_path" description="point cloud and lanelet2 map directory path"/>
+  <arg name="map_path" default="$(env AUTOWARE_MAP_PATH /home/efs/autoware_towtruck/autoware_map/projects_lab)" description="point cloud and lanelet2 map directory path"/>
   <arg name="vehicle_model" default="sample_vehicle" description="vehicle model name"/>
   <arg name="sensor_model" default="sample_sensor_kit" description="sensor model name"/>
   <arg name="pointcloud_container_name" default="pointcloud_container"/>
@@ -9,7 +9,22 @@
 
   <!-- launch module preset -->
   <arg name="planning_module_preset" default="default" description="planning module preset"/>
+  <arg
+    name="planning_module_preset_file"
+    default="$(find-pkg-share autoware_launch)/config/planning/preset/$(var planning_module_preset)_preset.yaml"
+    description="planning module preset file"
+  />
   <arg name="control_module_preset" default="default" description="control module preset"/>
+  <arg
+    name="control_module_preset_file"
+    default="$(find-pkg-share autoware_launch)/config/control/preset/$(var control_module_preset)_preset.yaml"
+    description="control module preset file"
+  />
+  <arg
+    name="path_generator_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/path_generator/path_generator.param.yaml"
+    description="path generator param path"
+  />
 
   <!-- Optional parameters -->
   <!-- Modules to be launched -->
@@ -28,6 +43,11 @@
   <!-- Vehicle -->
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)" description="vehicle specific ID"/>
   <arg name="launch_vehicle_interface" default="true" description="launch vehicle interface"/>
+  <arg name="launch_vehicle_serial_reader" default="true" description="launch towtruck serial reader"/>
+  <arg name="launch_vehicle_kinematics" default="true" description="launch towtruck vehicle kinematics"/>
+  <arg name="launch_vehicle_localization_bridge" default="true" description="launch towtruck localization bridge"/>
+  <arg name="launch_vehicle_odometry_publisher" default="true" description="launch towtruck odometry/status publisher"/>
+  <arg name="launch_vehicle_control_interface" default="true" description="launch towtruck control writer"/>
   <!-- Control -->
   <arg name="check_external_emergency_heartbeat" default="false"/>
   <!-- Map -->
@@ -37,6 +57,11 @@
   <arg name="system_run_mode" default="online" description="run mode in system"/>
   <arg name="launch_system_monitor" default="true" description="launch system monitor"/>
   <arg name="launch_dummy_diag_publisher" default="false" description="launch dummy diag publisher"/>
+  <arg
+    name="component_state_monitor_topic_path"
+    default="$(find-pkg-share autoware_launch)/config/system/component_state_monitor/topics.yaml"
+    description="component state monitor topics config"
+  />
   <arg name="diagnostic_graph_aggregator_graph_path" default="$(find-pkg-share autoware_launch)/config/system/diagnostics/autoware-main.yaml" description="diagnostic graph config"/>
   <!-- Tools -->
   <arg name="rviz" default="true" description="launch rviz"/>
@@ -71,6 +96,11 @@
       <arg name="sensor_model" value="$(var sensor_model)"/>
       <arg name="vehicle_id" value="$(var vehicle_id)"/>
       <arg name="launch_vehicle_interface" value="$(var launch_vehicle_interface)"/>
+      <arg name="launch_serial_reader" value="$(var launch_vehicle_serial_reader)"/>
+      <arg name="launch_vehicle_kinematics" value="$(var launch_vehicle_kinematics)"/>
+      <arg name="launch_localization_bridge" value="$(var launch_vehicle_localization_bridge)"/>
+      <arg name="launch_odometry_publisher" value="$(var launch_vehicle_odometry_publisher)"/>
+      <arg name="launch_autoware_control" value="$(var launch_vehicle_control_interface)"/>
       <arg name="config_dir" value="$(find-pkg-share $(var sensor_model)_description)/config"/>
       <arg name="raw_vehicle_cmd_converter_param_path" value="$(find-pkg-share autoware_launch)/config/vehicle/raw_vehicle_cmd_converter/raw_vehicle_cmd_converter.param.yaml"/>
     </include>
@@ -78,7 +108,10 @@
 
   <!-- System -->
   <group if="$(var launch_system)">
-    <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_system_component.launch.xml"/>
+    <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_system_component.launch.xml">
+      <arg name="component_state_monitor_topic_path" value="$(var component_state_monitor_topic_path)"/>
+      <arg name="diagnostic_graph_aggregator_graph_path" value="$(var diagnostic_graph_aggregator_graph_path)"/>
+    </include>
   </group>
 
   <!-- Map -->
@@ -110,6 +143,8 @@
   <group if="$(var launch_planning)">
     <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_planning_component.launch.xml">
       <arg name="module_preset" value="$(var planning_module_preset)"/>
+      <arg name="module_preset_file" value="$(var planning_module_preset_file)"/>
+      <arg name="path_generator_param_path" value="$(var path_generator_param_path)"/>
       <arg name="enable_all_modules_auto_mode" value="$(var enable_all_modules_auto_mode)"/>
       <arg name="is_simulation" value="$(var is_simulation)"/>
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
@@ -129,6 +164,7 @@
   <group if="$(var launch_control)">
     <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_control_component.launch.xml">
       <arg name="module_preset" value="$(var control_module_preset)"/>
+      <arg name="module_preset_file" value="$(var control_module_preset_file)"/>
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
       <arg name="vehicle_model" value="$(var vehicle_model)"/>
     </include>
