@@ -16,9 +16,7 @@
       <parent link="${parent}"/>
       <child link="${sensor_kit_base_link}"/>
     </joint>
-    <link name="${sensor_kit_base_link}">
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-    </link>
+    <link name="${sensor_kit_base_link}"/>
 
     <!-- sensor -->
     <xacro:property name="calibration" value="${xacro.load_yaml('$(arg config_dir)/sensor_kit_calibration.yaml')}"/>
