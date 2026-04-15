@@ -19,6 +19,8 @@ find_package(tf2_ros REQUIRED)
 
 find_package(autoware_vehicle_msgs REQUIRED)
 find_package(autoware_control_msgs REQUIRED)
+find_package(autoware_perception_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 
 # -----------------------
 # Install Python nodes
@@ -31,6 +33,7 @@ install(
     scripts/autoware_control.py
     scripts/livox_to_autoware.py
     scripts/livox_downsample.py
+    scripts/dummy_perception_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
