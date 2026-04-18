@@ -31,13 +31,16 @@ units:
     type: diag
     node: ndt_scan_matcher
     name: scan_matching_status
+    timeout: 3.0 # new addition
 
   - path: /autoware/localization/accuracy
     type: diag
     node: localization_error_monitor
     name: ellipse_error_status
+    timeout: 3.0 #new addition
 
   - path: /autoware/localization/sensor_fusion_status
     type: diag
     node: localization
     name: ekf_localizer
+    timeout: 3.0 #new addition

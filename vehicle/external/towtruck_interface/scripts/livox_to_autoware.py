@@ -45,7 +45,7 @@
 #     main()
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs.msg import PointCloud2, PointField, Imu
 import numpy as np
 
 class LivoxToAutowareFast(Node):
@@ -56,6 +56,24 @@ class LivoxToAutowareFast(Node):
         # Publish directly to the concatenated topic so Autoware's filters pick it up
         self.pub = self.create_publisher(
             PointCloud2, '/sensing/lidar/concatenated/pointcloud', 10)
+
+        # Bridge MID360's onboard IMU into Autoware's expected topic.
+        # We skip the imu_corrector pipeline (sensor kit launch is disabled)
+        # and publish straight to the corrected output topic.
+        self.imu_sub = self.create_subscription(
+            Imu, '/livox/imu', self.imu_callback, 50)
+        self.imu_pub = self.create_publisher(
+            Imu, '/sensing/imu/imu_data', 50)
+
+    def imu_callback(self, msg: Imu):
+        # Restamp to wall clock — the MID360's hardware stamp lags real time
+        # enough that downstream filters (EKF, AEB) reject every sample.
+        msg.header.stamp = self.get_clock().now().to_msg()
+        # Driver hardcodes frame_id='livox_frame' for IMU regardless of the
+        # `frame_id` launch param. Rewrite to the URDF frame so AEB and
+        # gyro_odometer can transform to base_link.
+        #msg.header.frame_id = 'velodyne_left'
+        self.imu_pub.publish(msg)
 
     def callback(self, msg: PointCloud2):
         n_points = msg.width * msg.height
@@ -106,6 +124,9 @@ class LivoxToAutowareFast(Node):
         # Build output message
         out_msg = PointCloud2()
         out_msg.header = msg.header
+        # Restamp the cloud to wall clock. The Livox onboard clock lags ROS time
+        # by ~1.8s, which made EKF reject every NDT pose (limit ~1.0s).
+        out_msg.header.stamp = self.get_clock().now().to_msg()
         out_msg.height = 1
         out_msg.width  = n_points
         out_msg.is_dense = False
