@@ -27,6 +27,7 @@ install(
   PROGRAMS
     scripts/serial_reader.py
     scripts/vehicle_kinematics.py
+    scripts/control_kinematics_simulator.py
     scripts/localization_bridge.py
     scripts/autoware_odometry_publisher.py
     scripts/autoware_control.py

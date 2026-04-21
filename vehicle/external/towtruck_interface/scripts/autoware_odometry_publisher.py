@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from autoware_vehicle_msgs.msg import (
     ControlModeReport,
+    GearCommand,
     GearReport,
     HazardLightsCommand,
     HazardLightsReport,
@@ -15,14 +16,22 @@ from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Float32 
 import math
 
+
+def gear_report_from_command(command: int):
+    if command in (GearCommand.NONE, GearCommand.NEUTRAL, GearCommand.PARK):
+        return None
+    return command
+
+
 class AutowareOdometryPublisher(Node):
 
     def __init__(self):
         super().__init__("autoware_odometry_publisher")
-        self.wheel_base = float(self.declare_parameter("wheel_base", 1.17).value)
+        self.wheel_base = float(self.declare_parameter("wheel_base", 1.1).value)
 
         self.v = 0.0
         self.steering = 0.0
+        self.current_gear_report = GearReport.DRIVE
 
         # We ONLY listen for raw data from your kinematics/serial node
         # We DO NOT calculate x, y, theta anymore. Autoware does that.
@@ -47,6 +56,9 @@ class AutowareOdometryPublisher(Node):
             reliability=ReliabilityPolicy.RELIABLE,
             durability=DurabilityPolicy.TRANSIENT_LOCAL,
         )
+        self.create_subscription(
+            GearCommand, "/control/command/gear_cmd", self.cb_gear_cmd, command_qos
+        )
         self.turn_cmd_pub = self.create_publisher(
             TurnIndicatorsCommand, "/planning/turn_indicators_cmd", command_qos
         )
@@ -63,6 +75,11 @@ class AutowareOdometryPublisher(Node):
     def cb_steering(self, msg): 
         # Convert degrees to radians for Autoware
         self.steering = msg.data * (math.pi / 180.0)
+
+    def cb_gear_cmd(self, msg: GearCommand):
+        reported_gear = gear_report_from_command(msg.command)
+        if reported_gear is not None:
+            self.current_gear_report = reported_gear
 
     def publish_status(self):
         now = self.get_clock().now().to_msg()
@@ -95,10 +112,9 @@ class AutowareOdometryPublisher(Node):
         self.mode_pub.publish(mode)
 
         # ---------------- Gear Report ------------------
-        # 2 = DRIVE gear. Tells RViz the car is in gear.
         gear = GearReport()
         gear.stamp = now
-        gear.report = GearReport.DRIVE 
+        gear.report = self.current_gear_report
         self.gear_pub.publish(gear)
 
         # ---------------- Lights (Dummy OFF) ---------------

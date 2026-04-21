@@ -25,6 +25,46 @@
     default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/path_generator/path_generator.param.yaml"
     description="path generator param path"
   />
+  <arg
+    name="behavior_path_planner_common_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner/behavior_path_planner.param.yaml"
+    description="behavior path planner common param path"
+  />
+  <arg
+    name="behavior_path_planner_goal_planner_module_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner/goal_planner/goal_planner.param.yaml"
+    description="behavior path planner goal planner module param path"
+  />
+  <arg
+    name="behavior_path_planner_start_planner_module_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner/start_planner/start_planner.param.yaml"
+    description="behavior path planner start planner module param path"
+  />
+  <arg
+    name="behavior_path_planner_drivable_area_expansion_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner/drivable_area_expansion.param.yaml"
+    description="behavior path planner drivable area expansion param path"
+  />
+  <arg
+    name="path_optimizer_param_path"
+    default="$(find-pkg-share autoware_launch)/config/planning/scenario_planning/lane_driving/motion_planning/autoware_path_optimizer/path_optimizer.param.yaml"
+    description="path optimizer param path"
+  />
+  <arg
+    name="scenario_selector_param_path"
+    default="$(find-pkg-share autoware_scenario_selector)/config/scenario_selector.param.yaml"
+    description="scenario selector param path"
+  />
+  <arg
+    name="planning_validator_use_obstacle_pointcloud"
+    default="true"
+    description="whether planning validator subscribes to and waits for the obstacle pointcloud input"
+  />
+  <arg
+    name="shift_decider_param_path"
+    default="$(find-pkg-share autoware_launch)/config/control/shift_decider/shift_decider.param.yaml"
+    description="shift decider param path"
+  />
 
   <!-- Optional parameters -->
   <!-- Modules to be launched -->
@@ -33,11 +73,25 @@
   <arg name="launch_map" default="true" description="launch map"/>
   <arg name="launch_sensing" default="true" description="launch sensing"/>
   <arg name="launch_sensing_driver" default="true" description="launch sensing driver"/>
+  <arg name="launch_sensing_imu_driver" default="true" description="launch sensing IMU driver"/>
   <arg name="launch_localization" default="true" description="launch localization"/>
   <arg name="launch_perception" default="true" description="launch perception"/>
   <arg name="launch_planning" default="true" description="launch planning"/>
   <arg name="launch_control" default="true" description="launch control"/>
   <arg name="launch_api" default="true" description="launch api"/>
+  <!-- Localization -->
+  <arg name="localization_pose_source" default="ndt" description="pose estimator to use inside localization"/>
+  <arg name="localization_twist_source" default="gyro_odom" description="twist estimator to use inside localization: gyro_odom, vehicle_twist, eagleye"/>
+  <arg
+    name="localization_gnss_enabled"
+    default="true"
+    description="whether to run GNSS-assisted automatic pose initialization"
+  />
+  <arg
+    name="localization_input_pointcloud"
+    default="/sensing/lidar/concatenated/pointcloud"
+    description="pointcloud topic consumed by localization"
+  />
   <!-- Global parameters -->
   <arg name="use_sim_time" default="false" description="use_sim_time"/>
   <!-- Vehicle -->
@@ -122,13 +176,26 @@
   <!-- Sensing -->
   <group if="$(var launch_sensing)">
     <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_sensing_component.launch.xml">
+      <arg name="launch_sensing_driver" value="$(var launch_sensing_driver)"/>
       <arg name="pointcloud_container_name" value="$(var pointcloud_container_name)"/>
+      <arg name="launch_sensing_imu_driver" value="$(var launch_sensing_imu_driver)"/>
+      <arg name="sensor_model" value="$(var sensor_model)"/>
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
     </include>
   </group>
 
   <!-- Localization -->
   <group if="$(var launch_localization)">
-    <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_localization_component.launch.xml"/>
+    <include file="$(find-pkg-share autoware_launch)/launch/components/tier4_localization_component.launch.xml">
+      <arg name="pose_source" value="$(var localization_pose_source)"/>
+      <arg name="twist_source" value="$(var localization_twist_source)"/>
+      <arg name="gnss_enabled" value="$(var localization_gnss_enabled)"/>
+      <arg name="input_pointcloud" value="$(var localization_input_pointcloud)"/>
+      <arg name="system_run_mode" value="$(var system_run_mode)"/>
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+    </include>
   </group>
 
   <!-- Perception -->
@@ -145,6 +212,28 @@
       <arg name="module_preset" value="$(var planning_module_preset)"/>
       <arg name="module_preset_file" value="$(var planning_module_preset_file)"/>
       <arg name="path_generator_param_path" value="$(var path_generator_param_path)"/>
+      <arg
+        name="behavior_path_planner_common_param_path"
+        value="$(var behavior_path_planner_common_param_path)"
+      />
+      <arg
+        name="behavior_path_planner_goal_planner_module_param_path"
+        value="$(var behavior_path_planner_goal_planner_module_param_path)"
+      />
+      <arg
+        name="behavior_path_planner_start_planner_module_param_path"
+        value="$(var behavior_path_planner_start_planner_module_param_path)"
+      />
+      <arg
+        name="behavior_path_planner_drivable_area_expansion_param_path"
+        value="$(var behavior_path_planner_drivable_area_expansion_param_path)"
+      />
+      <arg name="path_optimizer_param_path" value="$(var path_optimizer_param_path)"/>
+      <arg
+        name="planning_validator_use_obstacle_pointcloud"
+        value="$(var planning_validator_use_obstacle_pointcloud)"
+      />
+      <arg name="scenario_selector_param_path" value="$(var scenario_selector_param_path)"/>
       <arg name="enable_all_modules_auto_mode" value="$(var enable_all_modules_auto_mode)"/>
       <arg name="is_simulation" value="$(var is_simulation)"/>
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
@@ -167,6 +256,7 @@
       <arg name="module_preset_file" value="$(var control_module_preset_file)"/>
       <arg name="use_sim_time" value="$(var use_sim_time)"/>
       <arg name="vehicle_model" value="$(var vehicle_model)"/>
+      <arg name="shift_decider_param_path" value="$(var shift_decider_param_path)"/>
     </include>
   </group>
 

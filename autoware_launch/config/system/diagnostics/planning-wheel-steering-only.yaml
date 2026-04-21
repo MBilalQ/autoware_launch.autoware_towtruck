@@ -2,14 +2,8 @@ units:
   - path: /autoware/planning
     type: and
     list:
-      - { type: link, link: /autoware/planning/routing/state }
       - { type: link, link: /autoware/planning/topic_rate_check/route }
       - { type: link, link: /autoware/planning/topic_rate_check/trajectory }
-
-  - path: /autoware/planning/routing/state
-    type: diag
-    node: /adapi/node/routing
-    name: state
 
   - path: /autoware/planning/topic_rate_check/route
     type: diag

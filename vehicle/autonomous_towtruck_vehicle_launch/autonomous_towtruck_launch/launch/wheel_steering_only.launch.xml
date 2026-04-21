@@ -9,7 +9,7 @@
   <arg name="rviz" default="true"/>
   <arg name="rviz_config" default="/workspace/src/launcher/autoware_launch/autoware_launch/rviz/wheel_steering_only.rviz"/>
   <arg name="rviz_respawn" default="true"/>
-  <arg name="planning_module_preset" default="route_planning"/>
+  <arg name="planning_module_preset" default="wheel_steering_route_planning"/>
   <arg name="control_module_preset" default="wheel_steering_only"/>
   <arg
     name="control_module_preset_file"
@@ -17,36 +17,79 @@
   />
   <arg
     name="planning_module_preset_file"
-    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/preset/route_planning_preset.yaml"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/preset/wheel_steering_route_planning_preset.yaml"
   />
   <arg
     name="path_generator_param_path"
     default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/scenario_planning/lane_driving/behavior_planning/path_generator/wheel_steering_only.param.yaml"
   />
+  <arg
+    name="behavior_path_planner_common_param_path"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner/wheel_steering_only.param.yaml"
+  />
+  <arg
+    name="behavior_path_planner_drivable_area_expansion_param_path"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/scenario_planning/lane_driving/behavior_planning/behavior_path_planner/wheel_steering_only_drivable_area_expansion.param.yaml"
+  />
+  <arg
+    name="path_optimizer_param_path"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/scenario_planning/lane_driving/motion_planning/autoware_path_optimizer/wheel_steering_only.param.yaml"
+  />
+  <arg
+    name="scenario_selector_param_path"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/planning/scenario_planning/common/scenario_selector/wheel_steering_only.param.yaml"
+  />
+  <arg
+    name="shift_decider_param_path"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/control/shift_decider/wheel_steering_only.param.yaml"
+  />
+  <arg
+    name="planning_validator_use_obstacle_pointcloud"
+    default="false"
+    description="Keep false until a real obstacle pointcloud is available for planning validation."
+  />
   <arg name="launch_system" default="true"/>
   <arg name="launch_sensing" default="false"/>
+  <arg name="launch_sensing_driver" default="true"/>
+  <arg name="launch_sensing_imu_driver" default="true"/>
+  <arg name="launch_localization" default="false"/>
   <arg name="launch_control" default="true"/>
   <arg name="launch_system_monitor" default="false"/>
   <arg name="launch_dummy_diag_publisher" default="true"/>
   <arg
     name="component_state_monitor_topic_path"
-    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/wheel_steering_only_topics.yaml"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/system/component_state_monitor/wheel_steering_planning_only_topics.yaml"
   />
   <arg
     name="diagnostic_graph_aggregator_graph_path"
-    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/system/diagnostics/autoware-wheel-steering-only.yaml"
+    default="/workspace/src/launcher/autoware_launch/autoware_launch/config/system/diagnostics/autoware-wheel-steering-planning-only.yaml"
   />
   <arg name="enable_all_modules_auto_mode" default="true"/>
-  <arg name="launch_vehicle_serial_reader" default="true"/>
-  <arg name="launch_vehicle_kinematics" default="true"/>
+  <arg name="launch_vehicle_serial_reader" default="false"/>
+  <arg name="launch_vehicle_kinematics" default="false"/>
+  <arg name="launch_control_kinematics_simulator" default="true"/>
   <arg name="launch_vehicle_localization_bridge" default="true"/>
   <arg name="launch_vehicle_odometry_publisher" default="true"/>
-  <arg name="launch_vehicle_control_interface" default="true"/>
-  <arg name="launch_dummy_obstacle_pointcloud_publisher" default="true"/>
-  <arg name="launch_dummy_mrm_state_publisher" default="false"/>
+  <arg name="launch_vehicle_control_interface" default="false"/>
+  <arg
+    name="launch_dummy_objects_publisher"
+    default="true"
+    description="Publish empty detected objects only when testing planning modules that require an objects topic."
+  />
+  <arg
+    name="launch_dummy_occupancy_grid_publisher"
+    default="true"
+    description="Publish an empty occupancy grid only when a planning module explicitly needs that topic."
+  />
+  <arg
+    name="launch_dummy_obstacle_pointcloud_publisher"
+    default="false"
+    description="Publish an empty obstacle pointcloud until a real LiDAR obstacle pointcloud is connected."
+  />
+  <arg name="launch_dummy_mrm_state_publisher" default="true"/>
   <arg
     name="launch_dummy_operation_mode_publisher"
-    default="false"
+    default="true"
     description="Publish a fake operation mode state. Keep disabled when the real system stack is running."
   />
   <arg
@@ -64,6 +107,21 @@
     default="-1.8542"
     description="Overrides map->base_link z for dead-reckoning localization. Tune per map if the vehicle floats above or sinks below the ground plane."
   />
+  <arg
+    name="localization_pose_source"
+    default="ndt"
+    description="Autoware pose estimator to use when launch_localization is enabled."
+  />
+  <arg
+    name="localization_twist_source"
+    default="vehicle_twist"
+    description="Autoware twist estimator to use when launch_localization is enabled."
+  />
+  <arg
+    name="localization_gnss_enabled"
+    default="false"
+    description="Keep false for LiDAR + wheel/steering localization unless GNSS is actually available."
+  />
 
   <set_parameter name="map_z_override" value="$(var vehicle_localization_z_override)"/>
 
@@ -78,10 +136,30 @@
     <arg name="planning_module_preset_file" value="$(var planning_module_preset_file)"/>
     <arg name="control_module_preset" value="$(var control_module_preset)"/>
     <arg name="control_module_preset_file" value="$(var control_module_preset_file)"/>
+    <arg name="shift_decider_param_path" value="$(var shift_decider_param_path)"/>
     <arg name="path_generator_param_path" value="$(var path_generator_param_path)"/>
+    <arg
+      name="behavior_path_planner_common_param_path"
+      value="$(var behavior_path_planner_common_param_path)"
+    />
+    <arg
+      name="behavior_path_planner_drivable_area_expansion_param_path"
+      value="$(var behavior_path_planner_drivable_area_expansion_param_path)"
+    />
+    <arg name="path_optimizer_param_path" value="$(var path_optimizer_param_path)"/>
+    <arg
+      name="planning_validator_use_obstacle_pointcloud"
+      value="$(var planning_validator_use_obstacle_pointcloud)"
+    />
+    <arg name="scenario_selector_param_path" value="$(var scenario_selector_param_path)"/>
     <arg name="launch_system" value="$(var launch_system)"/>
     <arg name="launch_sensing" value="$(var launch_sensing)"/>
-    <arg name="launch_localization" value="false"/>
+    <arg name="launch_sensing_driver" value="$(var launch_sensing_driver)"/>
+    <arg name="launch_sensing_imu_driver" value="$(var launch_sensing_imu_driver)"/>
+    <arg name="launch_localization" value="$(var launch_localization)"/>
+    <arg name="localization_pose_source" value="$(var localization_pose_source)"/>
+    <arg name="localization_twist_source" value="$(var localization_twist_source)"/>
+    <arg name="localization_gnss_enabled" value="$(var localization_gnss_enabled)"/>
     <arg name="launch_perception" value="false"/>
     <arg name="launch_control" value="$(var launch_control)"/>
     <arg name="launch_vehicle_interface" value="true"/>
@@ -101,6 +179,7 @@
   </include>
 
   <node
+    if="$(var launch_dummy_objects_publisher)"
     pkg="autoware_dummy_perception_publisher"
     exec="empty_objects_publisher"
     name="empty_objects_publisher"
@@ -109,6 +188,7 @@
   </node>
 
   <node
+    if="$(var launch_dummy_occupancy_grid_publisher)"
     pkg="towtruck_interface"
     exec="empty_occupancy_grid_publisher.py"
     name="empty_occupancy_grid_publisher"
@@ -173,5 +253,16 @@
     <param name="topic_name" value="/system/fail_safe/mrm_state"/>
     <param name="state" value="1"/>
     <param name="behavior" value="1"/>
+  </node>
+
+  <node
+    if="$(var launch_control_kinematics_simulator)"
+    pkg="towtruck_interface"
+    exec="control_kinematics_simulator.py"
+    name="control_kinematics_simulator"
+    output="screen">
+    <param name="wheel_base" value="1.1"/>
+    <param name="publish_rate" value="50.0"/>
+    <param name="command_timeout" value="0.5"/>
   </node>
 </launch>

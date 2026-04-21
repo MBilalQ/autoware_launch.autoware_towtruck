@@ -1,0 +1,46 @@
+files:
+  - { path: $(dirname)/map.yaml }
+  - { path: $(dirname)/planning-wheel-steering-only.yaml }
+  - { path: $(dirname)/vehicle.yaml }
+
+units:
+  - path: /autoware/modes/local
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }
+
+  - path: /autoware/modes/remote
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }
+
+  - path: /autoware/modes/stop
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }
+
+  - path: /autoware/modes/autonomous
+    type: and
+    list:
+      - { type: link, link: /autoware/map }
+      - { type: link, link: /autoware/planning }
+      - { type: link, link: /autoware/vehicle }
+
+  - path: /autoware/modes/pull_over
+    type: and
+    list:
+      - { type: link, link: /autoware/map }
+      - { type: link, link: /autoware/planning }
+      - { type: link, link: /autoware/vehicle }
+
+  - path: /autoware/modes/comfortable_stop
+    type: and
+    list:
+      - { type: link, link: /autoware/map }
+      - { type: link, link: /autoware/planning }
+      - { type: link, link: /autoware/vehicle }
+
+  - path: /autoware/modes/emergency_stop
+    type: and
+    list:
+      - { type: link, link: /autoware/vehicle }

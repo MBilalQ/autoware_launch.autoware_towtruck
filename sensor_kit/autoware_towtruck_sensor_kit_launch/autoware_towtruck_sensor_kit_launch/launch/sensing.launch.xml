@@ -1,5 +1,6 @@
 <launch>
   <arg name="launch_driver" default="true" description="do launch driver"/>
+  <arg name="launch_imu_driver" default="true" description="do launch imu driver"/>
   <arg name="vehicle_mirror_param_file" description="path to the file of vehicle mirror position yaml"/>
   <arg name="pointcloud_container_name" default="pointcloud_container"/>
   <arg name="vehicle_id" default="$(env VEHICLE_ID default)"/>
@@ -12,7 +13,7 @@
     </include>
 
     <!-- IMU Driver -->
-    <include file="$(find-pkg-share autoware_towtruck_sensor_kit_launch)/launch/imu.launch.xml">
+    <include if="$(var launch_imu_driver)" file="$(find-pkg-share autoware_towtruck_sensor_kit_launch)/launch/imu.launch.xml">
       <arg name="launch_driver" value="$(var launch_driver)"/>
     </include>
 

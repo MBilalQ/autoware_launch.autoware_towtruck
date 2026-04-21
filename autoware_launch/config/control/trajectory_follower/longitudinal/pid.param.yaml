@@ -3,15 +3,15 @@
     delay_compensation_time: 0.1
 
     enable_smooth_stop: true
-    enable_overshoot_emergency: false
+    enable_overshoot_emergency: true
     enable_large_tracking_error_emergency: true
     enable_slope_compensation: true
     enable_keep_stopped_until_steer_convergence: true
 
     # state transition
-    drive_state_stop_dist: 0.5
-    drive_state_offset_stop_dist: 1.0
-    stopping_state_stop_dist: 0.49
+    drive_state_stop_dist: 1.0
+    drive_state_offset_stop_dist: 1.5
+    stopping_state_stop_dist: 0.8
     stopped_state_entry_duration_time: 0.1
     stopped_state_entry_vel: 0.01
     stopped_state_entry_acc: 0.1
@@ -42,7 +42,7 @@
     smooth_stop_weak_acc: -0.3
     smooth_stop_weak_stop_acc: -0.8
     smooth_stop_strong_stop_acc: -3.4
-    smooth_stop_max_fast_vel: 0.5
+    smooth_stop_max_fast_vel: 0.3
     smooth_stop_min_running_vel: 0.01
     smooth_stop_min_running_acc: 0.01
     smooth_stop_weak_stop_time: 0.8
@@ -63,11 +63,11 @@
     acc_feedback_gain: 0.0
 
     # acceleration limit
-    max_acc: 3.0
+    max_acc: 1.5
     min_acc: -5.0
 
     # jerk limit
-    max_jerk: 2.0
+    max_jerk: 1.0
     min_jerk: -5.0
     max_acc_cmd_diff: 50.0 # [m/s^2 * s^-1]
 
