@@ -26,6 +26,9 @@ class DisabledVehicleSignalsPublisher(Node):
         self.turn_pub = self.create_publisher(TurnIndicatorsCommand, self.turn_topic, qos)
         self.hazard_pub = self.create_publisher(HazardLightsCommand, self.hazard_topic, qos)
 
+        # Publish once immediately so late-starting control nodes have a latched OFF command.
+        self.publish_commands()
+
         period = 1.0 / self.publish_rate if self.publish_rate > 0.0 else 0.5
         self.create_timer(period, self.publish_commands)
 

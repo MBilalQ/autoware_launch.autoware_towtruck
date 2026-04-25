@@ -9,10 +9,10 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
 
     def __init__(self):
         super().__init__('kinematic_calculator')  # Name of our node to run the constructor as ROS 2 requires
-        self.wheel_radius = float(self.declare_parameter('wheel_radius', 0.2032).value)
-        self.wheel_base = float(self.declare_parameter('wheel_base', 1.17).value)
+        self.wheel_radius = float(self.declare_parameter('wheel_radius', 0.2).value)
+        self.wheel_base = float(self.declare_parameter('wheel_base', 1.1).value)
         self.pulses_per_revolution = float(self.declare_parameter('pulses_per_revolution', 740 * 1.1).value)
-        self.sampling_time = float(self.declare_parameter('sampling_time', 0.05).value)
+        self.default_sampling_time = float(self.declare_parameter('sampling_time', 0.05).value)
 
         # Subscriber for frequency data
         self.frequency_subscription = self.create_subscription(
@@ -43,7 +43,7 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
         # Initialize variables for received data
         self.frequency = 0.0
         self.phi = 0.0  # Default steering angle (will be updated by the callback)
-        
+        self.last_frequency_time = None
         self.phi_array = []
         
     def steering_angle_callback(self, msg):
@@ -53,13 +53,20 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
         
     def frequency_callback(self, msg):
         self.frequency = msg.data
-        self.calculate_and_publish()
+        now = self.get_clock().now()
+        dt = self.default_sampling_time
+        if self.last_frequency_time is not None:
+            measured_dt = (now - self.last_frequency_time).nanoseconds * 1.0e-9
+            if measured_dt > 0.0:
+                dt = measured_dt
+        self.last_frequency_time = now
+        self.calculate_and_publish(dt)
 
     #def steering_angle_callback(self, msg):
         #self.phi = msg.data  # Update steering angle with the received data
 	#self.phi_array.append(msg.data)
 	
-    def calculate_and_publish(self):
+    def calculate_and_publish(self, dt):
     	
     	# Calculate average phi if phi_array is not empty
         if self.phi_array:
@@ -70,11 +77,11 @@ class KinematicCalculator(Node):  # This class is inheriting from Node, which is
         self.v = (self.frequency * 2 * math.pi * self.wheel_radius) / self.pulses_per_revolution
 
         # Update the heading angle (theta)
-        self.theta += (self.v / self.wheel_base) * math.tan(math.radians(self.phi)) * self.sampling_time
+        self.theta += (self.v / self.wheel_base) * math.tan(math.radians(self.phi)) * dt
 
         # Update x, y positions using integration over time
-        self.x += self.v * math.cos(self.theta) * self.sampling_time 
-        self.y += self.v * math.sin(self.theta) * self.sampling_time
+        self.x += self.v * math.cos(self.theta) * dt 
+        self.y += self.v * math.sin(self.theta) * dt
 	
 	# Convert the x,y positions to the world frame
 	#self.x= self.x0 * math.cos(self.theta) - self.y0 * math.sin(self.theta)

@@ -5,10 +5,8 @@ from autoware_vehicle_msgs.msg import (
     ControlModeReport,
     GearCommand,
     GearReport,
-    HazardLightsCommand,
     HazardLightsReport,
     SteeringReport,
-    TurnIndicatorsCommand,
     TurnIndicatorsReport,
     VelocityReport,
 )
@@ -58,12 +56,6 @@ class AutowareOdometryPublisher(Node):
         )
         self.create_subscription(
             GearCommand, "/control/command/gear_cmd", self.cb_gear_cmd, command_qos
-        )
-        self.turn_cmd_pub = self.create_publisher(
-            TurnIndicatorsCommand, "/planning/turn_indicators_cmd", command_qos
-        )
-        self.hazard_cmd_pub = self.create_publisher(
-            HazardLightsCommand, "/planning/hazard_lights_cmd", command_qos
         )
 
         # Publish at 50Hz to ensure EKF is happy
@@ -127,16 +119,6 @@ class AutowareOdometryPublisher(Node):
         hazard.stamp = now
         hazard.report = HazardLightsReport.DISABLE # 1 = Disable/Off
         self.hazard_pub.publish(hazard)
-
-        turn_cmd = TurnIndicatorsCommand()
-        turn_cmd.stamp = now
-        turn_cmd.command = TurnIndicatorsCommand.DISABLE
-        self.turn_cmd_pub.publish(turn_cmd)
-
-        hazard_cmd = HazardLightsCommand()
-        hazard_cmd.stamp = now
-        hazard_cmd.command = HazardLightsCommand.DISABLE
-        self.hazard_cmd_pub.publish(hazard_cmd)
 
 def main ():
     rclpy.init()

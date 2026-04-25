@@ -4,6 +4,28 @@
   <arg name="launch_localization_bridge" default="true"/>
   <arg name="launch_odometry_publisher" default="true"/>
   <arg name="launch_autoware_control" default="true"/>
+  <arg name="wheels_serial_port" default="/dev/arduino_wheels"/>
+  <arg name="steering_serial_port" default="/dev/arduino_steering"/>
+  <arg name="serial_baud_rate" default="115200"/>
+  <arg name="serial_timeout_sec" default="0.05"/>
+  <arg name="serial_write_timeout_sec" default="0.05"/>
+  <arg name="wheel_radius" default="0.2"/>
+  <arg name="wheel_base" default="1.1"/>
+  <arg name="pulses_per_revolution" default="814.0"/>
+  <arg name="sampling_time" default="0.05"/>
+  <arg name="max_steer_angle_rad" default="0.9773843811"/>
+  <arg name="standstill_velocity_threshold" default="0.01"/>
+  <arg name="startup_acceleration_threshold" default="0.1"/>
+  <arg name="minimum_startup_velocity" default="0.35"/>
+  <arg name="disabled_signal_publish_rate" default="20.0"/>
+  <arg
+    name="disabled_turn_indicators_topic"
+    default="/towtruck/vehicle_cmd_gate/turn_indicators_cmd"
+  />
+  <arg
+    name="disabled_hazard_lights_topic"
+    default="/towtruck/vehicle_cmd_gate/hazard_lights_cmd"
+  />
 
   <!-- ============================= -->
   <!-- Serial Reader (Arduino I/O) -->
@@ -14,7 +36,11 @@
     name="serial_reader"
     output="screen"
     if="$(var launch_serial_reader)"
-  />
+  >
+    <param name="wheels_serial_port" value="$(var wheels_serial_port)"/>
+    <param name="steering_serial_port" value="$(var steering_serial_port)"/>
+    <param name="serial_baud_rate" value="$(var serial_baud_rate)"/>
+  </node>
 
   <!-- ============================= -->
   <!-- Vehicle Kinematics -->
@@ -25,7 +51,12 @@
     name="vehicle_kinematics"
     output="screen"
     if="$(var launch_vehicle_kinematics)"
-  />
+  >
+    <param name="wheel_radius" value="$(var wheel_radius)"/>
+    <param name="wheel_base" value="$(var wheel_base)"/>
+    <param name="pulses_per_revolution" value="$(var pulses_per_revolution)"/>
+    <param name="sampling_time" value="$(var sampling_time)"/>
+  </node>
 
   <!-- ============================= -->
   <!-- Localization Bridge -->
@@ -47,7 +78,20 @@
     name="autoware_odometry_publisher"
     output="screen"
     if="$(var launch_odometry_publisher)"
-  />
+  >
+    <param name="wheel_base" value="$(var wheel_base)"/>
+  </node>
+
+  <node
+    pkg="towtruck_interface"
+    exec="disabled_vehicle_signals_publisher.py"
+    name="disabled_vehicle_signals_publisher"
+    output="screen"
+  >
+    <param name="publish_rate" value="$(var disabled_signal_publish_rate)"/>
+    <param name="turn_topic" value="$(var disabled_turn_indicators_topic)"/>
+    <param name="hazard_topic" value="$(var disabled_hazard_lights_topic)"/>
+  </node>
 
   <!-- ============================= -->
   <!-- Autoware Control to Arduino -->
@@ -58,6 +102,18 @@
     name="autoware_control"
     output="screen"
     if="$(var launch_autoware_control)"
-  />
+  >
+    <param name="wheels_serial_port" value="$(var wheels_serial_port)"/>
+    <param name="steering_serial_port" value="$(var steering_serial_port)"/>
+    <param name="serial_baud_rate" value="$(var serial_baud_rate)"/>
+    <param name="serial_timeout_sec" value="$(var serial_timeout_sec)"/>
+    <param name="serial_write_timeout_sec" value="$(var serial_write_timeout_sec)"/>
+    <param name="wheel_radius" value="$(var wheel_radius)"/>
+    <param name="pulses_per_revolution" value="$(var pulses_per_revolution)"/>
+    <param name="max_steer_angle_rad" value="$(var max_steer_angle_rad)"/>
+    <param name="standstill_velocity_threshold" value="$(var standstill_velocity_threshold)"/>
+    <param name="startup_acceleration_threshold" value="$(var startup_acceleration_threshold)"/>
+    <param name="minimum_startup_velocity" value="$(var minimum_startup_velocity)"/>
+  </node>
 
 </launch>

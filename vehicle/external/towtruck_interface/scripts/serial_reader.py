@@ -45,11 +45,17 @@ def main():
         rclpy.shutdown()
         raise SystemExit(1)
     
+    wheels_serial_port = str(node.declare_parameter('wheels_serial_port', '/dev/arduino_wheels').value)
+    steering_serial_port = str(
+        node.declare_parameter('steering_serial_port', '/dev/arduino_steering').value
+    )
+    baud_rate = int(node.declare_parameter('serial_baud_rate', 115200).value)
+
     pub_float_frequency = node.create_publisher(Float32, 'frequency_data', 10)
     pub_float_steering_angle = node.create_publisher(Float32, 'steering_angle_data', 10)
 
-    arduino_frequency = restart_serial(node, '/dev/arduino_wheels', 115200) 
-    arduino_steering = restart_serial(node, '/dev/arduino_steering', 115200)
+    arduino_frequency = restart_serial(node, wheels_serial_port, baud_rate)
+    arduino_steering = restart_serial(node, steering_serial_port, baud_rate)
 
     try:
         while rclpy.ok():
@@ -62,7 +68,7 @@ def main():
                         pub_float_frequency.publish(msg_float)
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
-                arduino_frequency = restart_serial(node, '/dev/arduino_wheels', 115200) 
+                arduino_frequency = restart_serial(node, wheels_serial_port, baud_rate)
 
             # --- Read steering angle data ---
             try:
@@ -74,7 +80,7 @@ def main():
                         pub_float_steering_angle.publish(msg_float)
             except Exception as e:
                 node.get_logger().error(f'Unexpected error: {str(e)}')
-                arduino_steering = restart_serial(node, '/dev/arduino_steering', 115200)
+                arduino_steering = restart_serial(node, steering_serial_port, baud_rate)
 
             # --- THE MICRO-SLEEP ---
             # 1 millisecond sleep. Saves the laptop CPU, but keeps Arduino buffer empty!
