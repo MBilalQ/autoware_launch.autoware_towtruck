@@ -34,6 +34,7 @@ install(
     scripts/autoware_joystick_control.py
     scripts/empty_occupancy_grid_publisher.py
     scripts/empty_obstacle_pointcloud_publisher.py
+    scripts/path_corridor_obstacle_detector.py
     scripts/disabled_vehicle_signals_publisher.py
     scripts/dummy_operation_mode_publisher.py
     scripts/dummy_mrm_state_publisher.py

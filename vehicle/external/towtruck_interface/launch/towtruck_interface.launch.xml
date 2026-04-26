@@ -17,6 +17,13 @@
   <arg name="standstill_velocity_threshold" default="0.01"/>
   <arg name="startup_acceleration_threshold" default="0.1"/>
   <arg name="minimum_startup_velocity" default="0.35"/>
+  <arg name="obstacle_stop_enabled" default="true"/>
+  <arg name="obstacle_stop_distance" default="3.0"/>
+  <arg
+    name="obstacle_distance_topic"
+    default="/perception/obstacle_segmentation/nearest_obstacle_distance"
+  />
+  <arg name="obstacle_distance_timeout_sec" default="0.5"/>
   <arg name="disabled_signal_publish_rate" default="20.0"/>
   <arg
     name="disabled_turn_indicators_topic"
@@ -114,6 +121,10 @@
     <param name="standstill_velocity_threshold" value="$(var standstill_velocity_threshold)"/>
     <param name="startup_acceleration_threshold" value="$(var startup_acceleration_threshold)"/>
     <param name="minimum_startup_velocity" value="$(var minimum_startup_velocity)"/>
+    <param name="obstacle_stop_enabled" value="$(var obstacle_stop_enabled)"/>
+    <param name="obstacle_stop_distance" value="$(var obstacle_stop_distance)"/>
+    <param name="obstacle_distance_topic" value="$(var obstacle_distance_topic)"/>
+    <param name="obstacle_distance_timeout_sec" value="$(var obstacle_distance_timeout_sec)"/>
   </node>
 
 </launch>

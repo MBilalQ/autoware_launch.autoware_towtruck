@@ -9,6 +9,9 @@
   <arg name="rviz" default="true"/>
   <arg name="rviz_config" default="/workspace/src/launcher/autoware_launch/autoware_launch/rviz/wheel_steering_only.rviz"/>
   <arg name="rviz_respawn" default="true"/>
+  <arg name="launch_sensing" default="true"/>
+  <arg name="launch_path_corridor_obstacle_detector" default="true"/>
+  <arg name="planning_validator_use_obstacle_pointcloud" default="true"/>
   <arg name="planning_module_preset" default="wheel_steering_route_planning"/>
   <arg name="control_module_preset" default="wheel_steering_only"/>
   <arg
@@ -67,6 +70,15 @@
     <arg name="control_module_preset" value="$(var control_module_preset)"/>
     <arg name="control_module_preset_file" value="$(var control_module_preset_file)"/>
     <arg name="planning_module_preset_file" value="$(var planning_module_preset_file)"/>
+    <arg name="launch_sensing" value="$(var launch_sensing)"/>
+    <arg
+      name="launch_path_corridor_obstacle_detector"
+      value="$(var launch_path_corridor_obstacle_detector)"
+    />
+    <arg
+      name="planning_validator_use_obstacle_pointcloud"
+      value="$(var planning_validator_use_obstacle_pointcloud)"
+    />
     <arg name="path_generator_param_path" value="$(var path_generator_param_path)"/>
     <arg
       name="behavior_path_planner_common_param_path"

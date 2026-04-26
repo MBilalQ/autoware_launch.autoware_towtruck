@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+import importlib.util
+import os
+import sys
+
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import PointCloud2, PointField
@@ -42,6 +46,20 @@ class EmptyObstaclePointCloudPublisher(Node):
 
 
 def main(args=None) -> None:
+    argv = list(sys.argv if args is None else args)
+    if "--path-corridor-detector" in argv:
+        argv.remove("--path-corridor-detector")
+        detector_path = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "path_corridor_obstacle_detector.py"
+        )
+        spec = importlib.util.spec_from_file_location("path_corridor_obstacle_detector", detector_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("Unable to load path corridor obstacle detector")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.main(argv)
+        return
+
     rclpy.init(args=args)
     node = EmptyObstaclePointCloudPublisher()
     try:

@@ -45,8 +45,8 @@
   />
   <arg
     name="planning_validator_use_obstacle_pointcloud"
-    default="false"
-    description="Keep false until a real obstacle pointcloud is available for planning validation."
+    default="true"
+    description="Use the live path-corridor obstacle pointcloud for planning validation."
   />
   <arg name="launch_system" default="true"/>
   <arg name="launch_sensing" default="false"/>
@@ -98,10 +98,21 @@
     description="Relay a live LiDAR pointcloud into /perception/obstacle_segmentation/pointcloud for planning/control."
   />
   <arg
+    name="launch_path_corridor_obstacle_detector"
+    default="true"
+    description="Detect non-ground, non-map LiDAR clusters that overlap the current planned path corridor."
+  />
+  <arg
     name="lidar_obstacle_pointcloud_topic"
     default="/sensing/lidar/concatenated/pointcloud"
     description="Input LiDAR PointCloud2 topic to relay when launch_lidar_obstacle_pointcloud_relay is true."
   />
+  <arg name="obstacle_map_pointcloud_topic" default="/map/pointcloud_map"/>
+  <arg name="obstacle_trajectory_topic" default="/planning/scenario_planning/trajectory"/>
+  <arg name="obstacle_path_corridor_width" default="1.6"/>
+  <arg name="obstacle_path_corridor_margin" default="0.25"/>
+  <arg name="obstacle_height_threshold" default="0.09"/>
+  <arg name="obstacle_min_forward_distance" default="0.5"/>
   <arg
     name="vehicle_localization_z_override"
     default="-1.8542"
@@ -223,6 +234,27 @@
     output="screen">
     <param name="input_topic" value="$(var lidar_obstacle_pointcloud_topic)"/>
     <param name="output_topic" value="/perception/obstacle_segmentation/pointcloud"/>
+  </node>
+
+  <node
+    if="$(var launch_path_corridor_obstacle_detector)"
+    pkg="towtruck_interface"
+    exec="empty_obstacle_pointcloud_publisher.py"
+    args="--path-corridor-detector"
+    name="path_corridor_obstacle_detector"
+    output="screen">
+    <param name="input_pointcloud_topic" value="$(var lidar_obstacle_pointcloud_topic)"/>
+    <param name="map_pointcloud_topic" value="$(var obstacle_map_pointcloud_topic)"/>
+    <param name="trajectory_topic" value="$(var obstacle_trajectory_topic)"/>
+    <param name="output_pointcloud_topic" value="/perception/obstacle_segmentation/pointcloud"/>
+    <param
+      name="distance_topic"
+      value="/perception/obstacle_segmentation/nearest_obstacle_distance"
+    />
+    <param name="path_corridor_width" value="$(var obstacle_path_corridor_width)"/>
+    <param name="path_corridor_margin" value="$(var obstacle_path_corridor_margin)"/>
+    <param name="obstacle_height_threshold" value="$(var obstacle_height_threshold)"/>
+    <param name="min_forward_obstacle_distance" value="$(var obstacle_min_forward_distance)"/>
   </node>
 
   <node

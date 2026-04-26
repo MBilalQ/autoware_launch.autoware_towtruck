@@ -12,6 +12,7 @@ from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from std_msgs.msg import Float32
 
 try:
     from pySerialTransfer import pySerialTransfer as txfer
@@ -88,6 +89,21 @@ class AutowareArduinoControl(Node):
         self.minimum_startup_velocity = float(
             self.declare_parameter('minimum_startup_velocity', 0.35).value
         )
+        self.obstacle_stop_enabled = bool(
+            self.declare_parameter('obstacle_stop_enabled', True).value
+        )
+        self.obstacle_stop_distance = float(
+            self.declare_parameter('obstacle_stop_distance', 3.0).value
+        )
+        self.obstacle_distance_topic = str(
+            self.declare_parameter(
+                'obstacle_distance_topic',
+                '/perception/obstacle_segmentation/nearest_obstacle_distance',
+            ).value
+        )
+        self.obstacle_distance_timeout_sec = float(
+            self.declare_parameter('obstacle_distance_timeout_sec', 0.5).value
+        )
         self.control_log_interval_sec = 1.0
         self.packet_log_interval_sec = 1.0
 
@@ -114,6 +130,13 @@ class AutowareArduinoControl(Node):
             gear_qos,
             callback_group=self.command_callback_group,
         )
+        self.create_subscription(
+            Float32,
+            self.obstacle_distance_topic,
+            self.obstacle_distance_callback,
+            10,
+            callback_group=self.command_callback_group,
+        )
 
         # --- STATE VARIABLES ---
         self.reinitialize = False
@@ -133,6 +156,10 @@ class AutowareArduinoControl(Node):
         self.last_logged_packet_time_by_device = {}
         self.last_sent_packet_by_device = {}
         self.last_sent_time_by_device = {}
+        self.latest_obstacle_distance = -1.0
+        self.latest_obstacle_distance_time_sec = 0.0
+        self.obstacle_stop_active = False
+        self.last_logged_obstacle_stop_active = None
         self.next_reconnect_time_by_device = {}
         self.last_send_error_by_device = {}
         self.send_lock = threading.Lock()
@@ -259,6 +286,36 @@ class AutowareArduinoControl(Node):
             )
             self.last_logged_gear_cmd = msg.command
 
+    def obstacle_distance_callback(self, msg: Float32):
+        self.latest_obstacle_distance = float(msg.data)
+        self.latest_obstacle_distance_time_sec = self.now_sec()
+        previous_state = self.obstacle_stop_active
+        self.obstacle_stop_active = self.should_stop_for_obstacle()
+        if self.obstacle_stop_active:
+            self.brake_active = True
+            self.speed = 0
+        if self.obstacle_stop_active != previous_state:
+            if self.obstacle_stop_active:
+                self.get_logger().warn(
+                    "Obstacle stop active: "
+                    f"distance={self.latest_obstacle_distance:.2f} m, "
+                    f"threshold={self.obstacle_stop_distance:.2f} m"
+                )
+            else:
+                self.get_logger().info(
+                    "Obstacle stop cleared: "
+                    f"distance={self.latest_obstacle_distance:.2f} m"
+                )
+
+    def should_stop_for_obstacle(self) -> bool:
+        if not self.obstacle_stop_enabled:
+            return False
+        if self.latest_obstacle_distance < 0.0:
+            return False
+        if self.now_sec() - self.latest_obstacle_distance_time_sec > self.obstacle_distance_timeout_sec:
+            return False
+        return self.latest_obstacle_distance <= self.obstacle_stop_distance
+
     def control_callback(self, msg: Control):
         """
         Converts autoware_control_msgs/Control -> Arduino Variables
@@ -300,6 +357,11 @@ class AutowareArduinoControl(Node):
             self.brake_active = False
             self.speed = self.meters_per_second_to_pulses(requested_speed)
 
+        self.obstacle_stop_active = self.should_stop_for_obstacle()
+        if self.obstacle_stop_active:
+            self.brake_active = True
+            self.speed = 0
+
         steer_rad = max(
             -self.max_steer_angle_rad,
             min(self.max_steer_angle_rad, float(msg.lateral.steering_tire_angle)),
@@ -315,6 +377,7 @@ class AutowareArduinoControl(Node):
             round(target_acc, 4),
             gear_text,
             self.brake_active,
+            self.obstacle_stop_active,
             self.reverse_mode,
             self.speed,
             self.steering_angle,
@@ -327,7 +390,8 @@ class AutowareArduinoControl(Node):
             self.get_logger().info(
                 "RECEIVED control_cmd: "
                 f"v={target_v}, a={target_acc}, gear={gear_text}, "
-                f"brake={self.brake_active}, reverse={self.reverse_mode}, "
+                f"brake={self.brake_active}, obstacle_stop={self.obstacle_stop_active}, "
+                f"reverse={self.reverse_mode}, "
                 f"speed={self.speed}, steer={msg.lateral.steering_tire_angle}"
             )
             self.last_logged_control_signature = control_signature
