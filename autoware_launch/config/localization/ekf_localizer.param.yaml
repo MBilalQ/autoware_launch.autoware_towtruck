@@ -3,10 +3,13 @@
     node:
       show_debug_info: false
       enable_yaw_bias_estimation: true
-      predict_frequency: 50.0
+      # predict_frequency: 50.0
+      # predict_frequency: 150.0
+      predict_frequency: 25.0
       tf_rate: 50.0
-      extend_state_step: 50
-
+      # extend_state_step: 50
+      # extend_state_step: 150
+      extend_state_step: 80
     pose_measurement:
       # for Pose measurement
       pose_additional_delay: 0.0

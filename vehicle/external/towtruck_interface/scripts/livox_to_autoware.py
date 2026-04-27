@@ -63,7 +63,7 @@ class LivoxToAutowareFast(Node):
         self.imu_sub = self.create_subscription(
             Imu, '/livox/imu', self.imu_callback, 50)
         self.imu_pub = self.create_publisher(
-            Imu, '/sensing/imu/imu_data', 50)
+            Imu, '/sensing/imu/tamagawa/imu_raw', 50)
 
     def imu_callback(self, msg: Imu):
         # Restamp to wall clock — the MID360's hardware stamp lags real time
@@ -72,7 +72,8 @@ class LivoxToAutowareFast(Node):
         # Driver hardcodes frame_id='livox_frame' for IMU regardless of the
         # `frame_id` launch param. Rewrite to the URDF frame so AEB and
         # gyro_odometer can transform to base_link.
-        #msg.header.frame_id = 'velodyne_left'
+        msg.header.frame_id = 'tamagawa/imu_link'
+    
         self.imu_pub.publish(msg)
 
     def callback(self, msg: PointCloud2):
