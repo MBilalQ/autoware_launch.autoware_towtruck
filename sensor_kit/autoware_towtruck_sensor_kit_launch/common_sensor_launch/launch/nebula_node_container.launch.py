@@ -155,12 +155,14 @@ def launch_setup(context, *args, **kwargs):
     cropbox_parameters["processing_time_threshold_sec"] = 0.01
 
     vehicle_info = get_vehicle_info(context)
-    cropbox_parameters["min_x"] = vehicle_info["min_longitudinal_offset"]
-    cropbox_parameters["max_x"] = vehicle_info["max_longitudinal_offset"]
-    cropbox_parameters["min_y"] = vehicle_info["min_lateral_offset"]
-    cropbox_parameters["max_y"] = vehicle_info["max_lateral_offset"]
+    # Expand vehicle_info extents by 0.05 m margin on all sides (except min_z, which stays at ground).
+    self_crop_margin = 0.05
+    cropbox_parameters["min_x"] = vehicle_info["min_longitudinal_offset"] - self_crop_margin
+    cropbox_parameters["max_x"] = vehicle_info["max_longitudinal_offset"] + self_crop_margin
+    cropbox_parameters["min_y"] = vehicle_info["min_lateral_offset"] - self_crop_margin
+    cropbox_parameters["max_y"] = vehicle_info["max_lateral_offset"] + self_crop_margin
     cropbox_parameters["min_z"] = vehicle_info["min_height_offset"]
-    cropbox_parameters["max_z"] = vehicle_info["max_height_offset"]
+    cropbox_parameters["max_z"] = vehicle_info["max_height_offset"] + self_crop_margin
 
     nodes.append(
         ComposableNode(
