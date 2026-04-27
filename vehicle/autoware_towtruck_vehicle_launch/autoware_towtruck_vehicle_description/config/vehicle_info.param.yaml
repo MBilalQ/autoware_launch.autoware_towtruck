@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
-    wheel_radius: 0.20 # The radius of the wheel, primarily used for dead reckoning.
-    wheel_width: 0.09 # The lateral width of a wheel tire, primarily used for dead reckoning.
-    wheel_base: 1.185 # between front wheel center and rear wheel center
-    wheel_tread: 0.80 # between left wheel center and right wheel center
-    front_overhang: 0.085 # between front wheel center and vehicle front
-    rear_overhang: 0.01 # between rear wheel center and vehicle rear
-    left_overhang: 0.045 # between left wheel center and vehicle left
-    right_overhang: 0.045 # between right wheel center and vehicle right
-    vehicle_height: 1.9
-    max_steer_angle: 1.047 # [rad]
+    wheel_radius: 0.195 # rear drive wheel radius
+    wheel_width: 0.095 # rear wheel tire width
+    wheel_base: 0.995 # front wheel centre to rear axle centre
+    wheel_tread: 0.695 # rear wheel centre-to-centre
+    front_overhang: 0.20 # front axle to vehicle front
+    rear_overhang: 0.325 # rear axle to vehicle rear
+    left_overhang: 0.0475 # left wheel centre to vehicle left
+    right_overhang: 0.0475 # right wheel centre to vehicle right
+    vehicle_height: 1.83
+    max_steer_angle: 0.9774 # [rad] ±56°

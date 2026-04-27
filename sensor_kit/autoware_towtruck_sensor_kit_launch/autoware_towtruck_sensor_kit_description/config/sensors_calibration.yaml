@@ -1,8 +1,8 @@
 base_link:
   sensor_kit_base_link:
-    x: 1.0
+    x: 1.055   # TODO: verify LiDAR position on shelf — assumes shelf-centre
     y: 0.0
-    z: 1.9
+    z: 1.765   # TODO: verify against physical mount — = 1.83 - 0.065 (MID-360 case height, inverted)
     roll: 0.0
     pitch: 0.0
     yaw: 0.0
