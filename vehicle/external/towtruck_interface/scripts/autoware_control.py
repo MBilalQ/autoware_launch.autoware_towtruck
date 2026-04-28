@@ -92,6 +92,9 @@ class AutowareArduinoControl(Node):
         self.obstacle_stop_enabled = bool(
             self.declare_parameter('obstacle_stop_enabled', True).value
         )
+        self.obstacle_stop_min_distance = float(
+            self.declare_parameter('obstacle_stop_min_distance', 1.0).value
+        )
         self.obstacle_stop_distance = float(
             self.declare_parameter('obstacle_stop_distance', 3.0).value
         )
@@ -299,7 +302,8 @@ class AutowareArduinoControl(Node):
                 self.get_logger().warn(
                     "Obstacle stop active: "
                     f"distance={self.latest_obstacle_distance:.2f} m, "
-                    f"threshold={self.obstacle_stop_distance:.2f} m"
+                    f"trigger_window={self.obstacle_stop_min_distance:.2f}-"
+                    f"{self.obstacle_stop_distance:.2f} m"
                 )
             else:
                 self.get_logger().info(
@@ -307,14 +311,29 @@ class AutowareArduinoControl(Node):
                     f"distance={self.latest_obstacle_distance:.2f} m"
                 )
 
+    def obstacle_distance_is_fresh(self) -> bool:
+        if self.latest_obstacle_distance_time_sec <= 0.0:
+            return False
+        return (
+            self.now_sec() - self.latest_obstacle_distance_time_sec
+            <= self.obstacle_distance_timeout_sec
+        )
+
+    def obstacle_is_detected(self) -> bool:
+        return self.latest_obstacle_distance >= 0.0 and self.obstacle_distance_is_fresh()
+
     def should_stop_for_obstacle(self) -> bool:
         if not self.obstacle_stop_enabled:
             return False
-        if self.latest_obstacle_distance < 0.0:
+
+        if not self.obstacle_is_detected():
             return False
-        if self.now_sec() - self.latest_obstacle_distance_time_sec > self.obstacle_distance_timeout_sec:
-            return False
-        return self.latest_obstacle_distance <= self.obstacle_stop_distance
+
+        return (
+            self.obstacle_stop_min_distance
+            <= self.latest_obstacle_distance
+            <= self.obstacle_stop_distance
+        )
 
     def control_callback(self, msg: Control):
         """

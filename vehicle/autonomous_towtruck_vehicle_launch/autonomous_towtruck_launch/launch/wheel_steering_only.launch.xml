@@ -108,11 +108,16 @@
     description="Input LiDAR PointCloud2 topic to relay when launch_lidar_obstacle_pointcloud_relay is true."
   />
   <arg name="obstacle_map_pointcloud_topic" default="/map/pointcloud_map"/>
-  <arg name="obstacle_trajectory_topic" default="/planning/scenario_planning/trajectory"/>
-  <arg name="obstacle_path_corridor_width" default="1.6"/>
-  <arg name="obstacle_path_corridor_margin" default="0.25"/>
+  <arg name="obstacle_trajectory_topic" default="/planning/trajectory"/>
+  <arg name="obstacle_fallback_trajectory_topic" default="/planning/scenario_planning/trajectory"/>
+  <arg name="obstacle_path_corridor_width" default="0.8"/>
+  <arg name="obstacle_path_corridor_margin" default="0.05"/>
   <arg name="obstacle_height_threshold" default="0.09"/>
   <arg name="obstacle_min_forward_distance" default="0.5"/>
+  <arg name="obstacle_min_corridor_points" default="4"/>
+  <arg name="obstacle_detection_hold_time_sec" default="0.25"/>
+  <arg name="obstacle_max_detection_range" default="10.0"/>
+  <arg name="obstacle_output_publish_rate" default="20.0"/>
   <arg
     name="vehicle_localization_z_override"
     default="-1.8542"
@@ -246,6 +251,7 @@
     <param name="input_pointcloud_topic" value="$(var lidar_obstacle_pointcloud_topic)"/>
     <param name="map_pointcloud_topic" value="$(var obstacle_map_pointcloud_topic)"/>
     <param name="trajectory_topic" value="$(var obstacle_trajectory_topic)"/>
+    <param name="fallback_trajectory_topic" value="$(var obstacle_fallback_trajectory_topic)"/>
     <param name="output_pointcloud_topic" value="/perception/obstacle_segmentation/pointcloud"/>
     <param
       name="distance_topic"
@@ -255,6 +261,10 @@
     <param name="path_corridor_margin" value="$(var obstacle_path_corridor_margin)"/>
     <param name="obstacle_height_threshold" value="$(var obstacle_height_threshold)"/>
     <param name="min_forward_obstacle_distance" value="$(var obstacle_min_forward_distance)"/>
+    <param name="min_corridor_points" value="$(var obstacle_min_corridor_points)"/>
+    <param name="detection_hold_time_sec" value="$(var obstacle_detection_hold_time_sec)"/>
+    <param name="max_detection_range" value="$(var obstacle_max_detection_range)"/>
+    <param name="distance_publish_rate" value="$(var obstacle_output_publish_rate)"/>
   </node>
 
   <node

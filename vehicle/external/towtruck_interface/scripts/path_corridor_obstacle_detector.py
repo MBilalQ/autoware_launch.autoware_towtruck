@@ -11,7 +11,12 @@ from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import Odometry, Path
 from rclpy.duration import Duration
 from rclpy.node import Node
-from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+from rclpy.qos import (
+    DurabilityPolicy,
+    HistoryPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+)
 from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Float32
@@ -106,17 +111,22 @@ class PathCorridorObstacleDetector(Node):
         )
         self.trajectory_topic = str(
             self.declare_parameter(
-                "trajectory_topic", "/planning/scenario_planning/trajectory"
+                "trajectory_topic", "/planning/trajectory"
+            ).value
+        )
+        self.fallback_trajectory_topic = str(
+            self.declare_parameter(
+                "fallback_trajectory_topic", "/planning/scenario_planning/trajectory"
             ).value
         )
         self.behavior_path_topic = str(
             self.declare_parameter(
                 "behavior_path_topic",
-                "/planning/scenario_planning/lane_driving/behavior_planning/path_with_lane_id",
+                "",
             ).value
         )
         self.nav_path_topic = str(
-            self.declare_parameter("nav_path_topic", "/planning/scenario_planning/path").value
+            self.declare_parameter("nav_path_topic", "").value
         )
         self.output_pointcloud_topic = str(
             self.declare_parameter(
@@ -139,16 +149,25 @@ class PathCorridorObstacleDetector(Node):
         )
         self.cluster_tolerance = float(self.declare_parameter("cluster_tolerance", 0.45).value)
         self.min_cluster_points = int(self.declare_parameter("min_cluster_points", 4).value)
+        self.min_corridor_points = int(
+            self.declare_parameter("min_corridor_points", self.min_cluster_points).value
+        )
         self.max_cluster_points = int(self.declare_parameter("max_cluster_points", 5000).value)
-        self.path_corridor_width = float(self.declare_parameter("path_corridor_width", 1.6).value)
-        self.path_corridor_margin = float(self.declare_parameter("path_corridor_margin", 0.25).value)
+        self.path_corridor_width = float(self.declare_parameter("path_corridor_width", 0.8).value)
+        self.path_corridor_margin = float(self.declare_parameter("path_corridor_margin", 0.05).value)
         self.min_forward_obstacle_distance = float(
             self.declare_parameter("min_forward_obstacle_distance", 0.5).value
         )
-        self.max_detection_range = float(self.declare_parameter("max_detection_range", 35.0).value)
+        self.detection_hold_time_sec = float(
+            self.declare_parameter("detection_hold_time_sec", 0.25).value
+        )
+        self.max_detection_range = float(self.declare_parameter("max_detection_range", 10.0).value)
         self.max_input_points = int(self.declare_parameter("max_input_points", 120000).value)
         self.publish_no_obstacle_distance = bool(
             self.declare_parameter("publish_no_obstacle_distance", True).value
+        )
+        self.distance_publish_rate = float(
+            self.declare_parameter("distance_publish_rate", 20.0).value
         )
         self.self_filter_min_x = float(self.declare_parameter("self_filter_min_x", -2.2).value)
         self.self_filter_max_x = float(self.declare_parameter("self_filter_max_x", 1.6).value)
@@ -161,6 +180,11 @@ class PathCorridorObstacleDetector(Node):
         self.path_xy: List[Point2] = []
         self.path_arcs: List[float] = []
         self.ego_xy: Optional[Point2] = None
+        self.last_actionable_points: List[Point3] = []
+        self.last_nearest_distance = float("inf")
+        self.last_detection_time_sec = 0.0
+        self.current_actionable_points: List[Point3] = []
+        self.current_distance = -1.0
 
         self.tf_buffer = Buffer(cache_time=Duration(seconds=10.0))
         self.tf_listener = TransformListener(self.tf_buffer, self)
@@ -175,13 +199,18 @@ class PathCorridorObstacleDetector(Node):
         self.create_subscription(PointCloud2, self.input_pointcloud_topic, self.on_cloud, 1)
         self.create_subscription(PointCloud2, self.map_pointcloud_topic, self.on_map, map_qos)
         self.create_subscription(Trajectory, self.trajectory_topic, self.on_trajectory, 1)
-        self.create_subscription(Path, self.nav_path_topic, self.on_nav_path, 1)
+        if self.fallback_trajectory_topic and self.fallback_trajectory_topic != self.trajectory_topic:
+            self.create_subscription(Trajectory, self.fallback_trajectory_topic, self.on_trajectory, 1)
+        if self.nav_path_topic:
+            self.create_subscription(Path, self.nav_path_topic, self.on_nav_path, 1)
         self.create_subscription(Odometry, "/localization/kinematic_state", self.on_odometry, 1)
-        if PathWithLaneId is not None:
+        if PathWithLaneId is not None and self.behavior_path_topic:
             self.create_subscription(PathWithLaneId, self.behavior_path_topic, self.on_lane_path, 1)
 
-        self.obstacle_pub = self.create_publisher(PointCloud2, self.output_pointcloud_topic, 10)
-        self.distance_pub = self.create_publisher(Float32, self.distance_topic, 10)
+        self.obstacle_pub = self.create_publisher(PointCloud2, self.output_pointcloud_topic, 1)
+        self.distance_pub = self.create_publisher(Float32, self.distance_topic, 1)
+        if self.distance_publish_rate > 0.0:
+            self.create_timer(1.0 / self.distance_publish_rate, self.publish_current_outputs)
 
         self.get_logger().info(
             "Detecting non-ground, non-map clusters from %s inside the planned path corridor"
@@ -272,34 +301,121 @@ class PathCorridorObstacleDetector(Node):
             points = points_in_base
 
         points = self.limit_range(points)
+        ego_arc = self.current_ego_arc()
+        points, candidate_arcs = self.filter_to_forward_path_corridor(points, ego_arc)
         points = self.remove_ground(points)
         points = self.remove_map_points(points)
         clusters = self.cluster(points)
 
         actionable_points: List[Point3] = []
         nearest_distance = float("inf")
-        ego_arc = self.current_ego_arc()
-        corridor_half_width = 0.5 * self.path_corridor_width + self.path_corridor_margin
 
         for cluster in clusters:
-            lateral_and_arc = [
-                project_to_path((float(point[0]), float(point[1])), self.path_xy, self.path_arcs)
-                for point in cluster
-            ]
-            if not any(lateral <= corridor_half_width for lateral, _ in lateral_and_arc):
+            if len(cluster) < self.min_corridor_points:
                 continue
-            actionable_points.extend((float(p[0]), float(p[1]), float(p[2])) for p in cluster)
-            cluster_arc = min(arc for lateral, arc in lateral_and_arc if lateral <= corridor_half_width)
+            cluster_arcs: List[float] = []
+            for point in cluster:
+                voxel = as_voxel(point, self.map_voxel_size)
+                arc = candidate_arcs.get(voxel)
+                if arc is not None:
+                    cluster_arcs.append(arc)
+            if len(cluster_arcs) < self.min_corridor_points:
+                continue
+            cluster_arc = min(cluster_arcs)
             distance = cluster_arc - ego_arc
-            if distance < self.min_forward_obstacle_distance:
-                continue
+            actionable_points.extend((float(p[0]), float(p[1]), float(p[2])) for p in cluster)
             nearest_distance = min(nearest_distance, distance)
 
-        self.publish_cloud(actionable_points, msg.header.stamp)
         if math.isfinite(nearest_distance):
+            self.last_actionable_points = actionable_points
+            self.last_nearest_distance = nearest_distance
+            self.last_detection_time_sec = self.now_sec()
+            self.current_actionable_points = actionable_points
             self.publish_distance(nearest_distance)
+        elif self.recent_detection_is_held():
+            self.current_actionable_points = self.last_actionable_points
+            self.publish_distance(self.last_nearest_distance)
         elif self.publish_no_obstacle_distance:
+            self.current_actionable_points = []
             self.publish_distance(-1.0)
+        else:
+            self.current_actionable_points = []
+            self.publish_current_outputs(msg.header.stamp)
+
+    def now_sec(self) -> float:
+        return self.get_clock().now().nanoseconds * 1e-9
+
+    def recent_detection_is_held(self) -> bool:
+        if self.detection_hold_time_sec <= 0.0:
+            return False
+        if not self.last_actionable_points or not math.isfinite(self.last_nearest_distance):
+            return False
+        return self.now_sec() - self.last_detection_time_sec <= self.detection_hold_time_sec
+
+    def filter_to_forward_path_corridor(
+        self, points: np.ndarray, ego_arc: float
+    ) -> Tuple[np.ndarray, Dict[Tuple[int, int, int], float]]:
+        if points.size == 0:
+            return points, {}
+        corridor_half_width = 0.5 * self.path_corridor_width + self.path_corridor_margin
+        margin = corridor_half_width + self.cluster_tolerance
+        max_arc = ego_arc + self.max_detection_range
+        segment_indices = [
+            i for i in range(len(self.path_xy) - 1)
+            if self.path_arcs[i + 1] >= ego_arc and self.path_arcs[i] <= max_arc
+        ]
+        if not segment_indices:
+            return np.empty((0, 3), dtype=np.float64), {}
+
+        local_path = [self.path_xy[i] for i in segment_indices]
+        local_path.extend(self.path_xy[i + 1] for i in segment_indices)
+        path_x = [p[0] for p in local_path]
+        path_y = [p[1] for p in local_path]
+        rough_mask = (
+            (points[:, 0] >= min(path_x) - margin)
+            & (points[:, 0] <= max(path_x) + margin)
+            & (points[:, 1] >= min(path_y) - margin)
+            & (points[:, 1] <= max(path_y) + margin)
+        )
+        candidates = points[rough_mask]
+        if candidates.size == 0:
+            return np.empty((0, 3), dtype=np.float64), {}
+
+        best_lateral = np.full(candidates.shape[0], np.inf, dtype=np.float64)
+        best_arc = np.zeros(candidates.shape[0], dtype=np.float64)
+        px = candidates[:, 0]
+        py = candidates[:, 1]
+
+        for i in segment_indices:
+            ax, ay = self.path_xy[i]
+            bx, by = self.path_xy[i + 1]
+            vx, vy = bx - ax, by - ay
+            seg_len_sq = vx * vx + vy * vy
+            if seg_len_sq <= 1e-9:
+                continue
+            ratio = np.clip(((px - ax) * vx + (py - ay) * vy) / seg_len_sq, 0.0, 1.0)
+            cx = ax + ratio * vx
+            cy = ay + ratio * vy
+            lateral = np.hypot(px - cx, py - cy)
+            update = lateral < best_lateral
+            best_lateral[update] = lateral[update]
+            best_arc[update] = self.path_arcs[i] + math.sqrt(seg_len_sq) * ratio[update]
+
+        forward_distance = best_arc - ego_arc
+        keep_mask = (
+            (best_lateral <= corridor_half_width)
+            & (forward_distance >= self.min_forward_obstacle_distance)
+            & (forward_distance <= self.max_detection_range)
+        )
+        kept = candidates[keep_mask]
+        kept_arcs = best_arc[keep_mask]
+        if kept.size == 0:
+            return np.empty((0, 3), dtype=np.float64), {}
+
+        candidate_arcs: Dict[Tuple[int, int, int], float] = {}
+        for point, arc in zip(kept, kept_arcs):
+            candidate_arcs[as_voxel(point, self.map_voxel_size)] = float(arc)
+        return kept, candidate_arcs
 
     def read_xyz(self, msg: PointCloud2) -> np.ndarray:
         fields = [field.name for field in msg.fields]
@@ -458,13 +574,22 @@ class PathCorridorObstacleDetector(Node):
         self.obstacle_pub.publish(point_cloud2.create_cloud(msg_header, fields, points))
 
     def publish_empty(self, stamp) -> None:
-        self.publish_cloud([], stamp)
+        self.current_actionable_points = []
         if self.publish_no_obstacle_distance:
             self.publish_distance(-1.0)
+        else:
+            self.publish_current_outputs(stamp)
 
     def publish_distance(self, distance: float) -> None:
+        self.current_distance = float(distance)
+        self.publish_current_outputs()
+
+    def publish_current_outputs(self, stamp=None) -> None:
+        if stamp is None:
+            stamp = self.get_clock().now().to_msg()
+        self.publish_cloud(self.current_actionable_points, stamp)
         msg = Float32()
-        msg.data = float(distance)
+        msg.data = float(self.current_distance)
         self.distance_pub.publish(msg)
 
     def create_header(self, stamp):
