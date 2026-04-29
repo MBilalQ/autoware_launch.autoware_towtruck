@@ -1,5 +1,12 @@
 <launch>
 
+  <node
+    pkg="towtruck_interface"
+    exec="livox_to_autoware.py"
+    name="livox_to_autoware"
+    output="screen"
+  />
+
   <!-- ============================= -->
   <!-- Serial Reader (Arduino I/O) -->
   <!-- ============================= -->
@@ -37,6 +44,13 @@
     pkg="towtruck_interface"
     exec="autoware_control.py"
     name="autoware_control"
+    output="screen"
+  />
+
+  <node
+    pkg="towtruck_interface"
+    exec="dummy_perception_publisher.py"
+    name="dummy_perception_publisher"
     output="screen"
   />
 
