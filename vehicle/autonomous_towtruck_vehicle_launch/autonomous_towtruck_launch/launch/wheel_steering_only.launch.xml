@@ -138,6 +138,11 @@
     default="false"
     description="Keep false for LiDAR + wheel/steering localization unless GNSS is actually available."
   />
+  <arg
+    name="localization_input_pointcloud"
+    default="/sensing/lidar/concatenated/pointcloud"
+    description="Live LiDAR pointcloud topic consumed by NDT localization."
+  />
 
   <set_parameter name="map_z_override" value="$(var vehicle_localization_z_override)"/>
 
@@ -176,6 +181,7 @@
     <arg name="localization_pose_source" value="$(var localization_pose_source)"/>
     <arg name="localization_twist_source" value="$(var localization_twist_source)"/>
     <arg name="localization_gnss_enabled" value="$(var localization_gnss_enabled)"/>
+    <arg name="localization_input_pointcloud" value="$(var localization_input_pointcloud)"/>
     <arg name="launch_perception" value="false"/>
     <arg name="launch_control" value="$(var launch_control)"/>
     <arg name="launch_vehicle_interface" value="true"/>

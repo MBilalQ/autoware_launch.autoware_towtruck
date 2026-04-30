@@ -10,6 +10,19 @@
   <arg name="rviz_config" default="/workspace/src/launcher/autoware_launch/autoware_launch/rviz/wheel_steering_only.rviz"/>
   <arg name="rviz_respawn" default="true"/>
   <arg name="launch_sensing" default="true"/>
+  <arg
+    name="launch_mid360_imu_relay"
+    default="true"
+    description="Relay the Livox MID360 IMU to Autoware's standard IMU topic for gyro odometry."
+  />
+  <arg
+    name="publish_mid360_legacy_imu_tf"
+    default="true"
+    description="Publish livox_mid360 -> livox_frame identity TF for Livox driver builds that stamp IMU with the legacy livox_frame."
+  />
+  <arg name="mid360_imu_topic" default="/sensing/lidar/top/livox/imu"/>
+  <arg name="localization_imu_topic" default="/sensing/imu/imu_data"/>
+  <arg name="localization_input_pointcloud" default="/sensing/lidar/concatenated/pointcloud"/>
   <arg name="launch_path_corridor_obstacle_detector" default="true"/>
   <arg name="planning_validator_use_obstacle_pointcloud" default="true"/>
   <arg name="obstacle_map_pointcloud_topic" default="/map/pointcloud_map"/>
@@ -66,6 +79,13 @@
     name="launch_dummy_mrm_state_publisher"
     default="true"
   />
+  <arg name="localization_pose_source" default="ndt"/>
+  <arg name="localization_twist_source" default="gyro_odom"/>
+  <arg
+    name="localization_gnss_enabled"
+    default="false"
+    description="Keep false for LiDAR + wheel odometry + MID360 IMU localization unless GNSS is available."
+  />
 
   <include file="$(find-pkg-share autonomous_towtruck_launch)/launch/wheel_steering_only.launch.xml">
     <arg name="map_path" value="$(var map_path)"/>
@@ -82,6 +102,13 @@
     <arg name="control_module_preset_file" value="$(var control_module_preset_file)"/>
     <arg name="planning_module_preset_file" value="$(var planning_module_preset_file)"/>
     <arg name="launch_sensing" value="$(var launch_sensing)"/>
+    <arg name="launch_sensing_driver" value="true"/>
+    <arg name="launch_sensing_imu_driver" value="false"/>
+    <arg name="launch_localization" value="true"/>
+    <arg name="localization_pose_source" value="$(var localization_pose_source)"/>
+    <arg name="localization_twist_source" value="$(var localization_twist_source)"/>
+    <arg name="localization_gnss_enabled" value="$(var localization_gnss_enabled)"/>
+    <arg name="localization_input_pointcloud" value="$(var localization_input_pointcloud)"/>
     <arg
       name="launch_path_corridor_obstacle_detector"
       value="$(var launch_path_corridor_obstacle_detector)"
@@ -130,7 +157,7 @@
     <arg name="launch_vehicle_serial_reader" value="true"/>
     <arg name="launch_vehicle_kinematics" value="true"/>
     <arg name="launch_control_kinematics_simulator" value="false"/>
-    <arg name="launch_vehicle_localization_bridge" value="true"/>
+    <arg name="launch_vehicle_localization_bridge" value="false"/>
     <arg name="launch_vehicle_odometry_publisher" value="true"/>
     <arg name="launch_vehicle_control_interface" value="true"/> # was true 
     <arg
@@ -142,4 +169,24 @@
       value="$(var launch_dummy_mrm_state_publisher)"
     />
   </include>
+
+  <node
+    if="$(var launch_mid360_imu_relay)"
+    pkg="topic_tools"
+    exec="relay"
+    name="mid360_imu_relay"
+    output="log">
+    <param name="input_topic" value="$(var mid360_imu_topic)"/>
+    <param name="output_topic" value="$(var localization_imu_topic)"/>
+    <param name="type" value="sensor_msgs/msg/Imu"/>
+    <param name="reliability" value="best_effort"/>
+  </node>
+
+  <node
+    if="$(var publish_mid360_legacy_imu_tf)"
+    pkg="tf2_ros"
+    exec="static_transform_publisher"
+    name="livox_mid360_legacy_imu_tf"
+    args="0 0 0 0 0 0 livox_mid360 livox_frame"
+    output="log"/>
 </launch>
