@@ -44,11 +44,11 @@
     output="screen"
   />
 
-  <node
+  <!-- <node
     pkg="towtruck_interface"
     exec="dummy_perception_publisher.py"
     name="dummy_perception_publisher"
     output="screen"
-  />
+  /> -->
 
 </launch>
