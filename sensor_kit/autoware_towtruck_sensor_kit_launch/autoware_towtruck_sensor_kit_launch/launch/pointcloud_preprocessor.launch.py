@@ -66,16 +66,19 @@ def generate_launch_description():
     def add_launch_arg(name: str, default_value=None):
         launch_arguments.append(DeclareLaunchArgument(name, default_value=default_value))
 
-    sample_sensor_kit_launch_share_dir = get_package_share_directory("sample_sensor_kit_launch")
+    sensor_kit_launch_share_dir = get_package_share_directory(
+        "autoware_towtruck_sensor_kit_launch"
+    )
 
     add_launch_arg("base_frame", "base_link")
     add_launch_arg("use_multithread", "False")
     add_launch_arg("use_intra_process", "False")
     add_launch_arg("pointcloud_container_name", "pointcloud_container")
+    add_launch_arg("use_concat_filter", "true")
     add_launch_arg(
         "concatenate_and_time_sync_node_param_path",
         os.path.join(
-            sample_sensor_kit_launch_share_dir,
+            sensor_kit_launch_share_dir,
             "config",
             "concatenate_and_time_sync_node.param.yaml",
         ),

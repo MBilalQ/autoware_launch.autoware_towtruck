@@ -1,11 +1,8 @@
 <launch>
 
-  <node
-    pkg="towtruck_interface"
-    exec="livox_to_autoware.py"
-    name="livox_to_autoware"
-    output="screen"
-  />
+  <!-- livox_to_autoware now runs as a C++ composable node loaded into
+       pointcloud_container (see autoware_towtruck_sensor_kit_launch/launch/
+       lidar.launch.py). Removed from this launch file. -->
 
   <!-- ============================= -->
   <!-- Serial Reader (Arduino I/O) -->
