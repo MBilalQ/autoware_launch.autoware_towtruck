@@ -110,27 +110,28 @@ LivoxToAutoware::LivoxToAutoware(const rclcpp::NodeOptions & options)
   lidar_frame_id_ = this->declare_parameter<std::string>("lidar_frame_id", "velodyne_left");
   imu_frame_id_   = this->declare_parameter<std::string>("imu_frame_id",   "tamagawa/imu_link");
 
-  // Cloud chain stays on sensor_data QoS — the Autoware pointcloud
-  // filters (cropbox, distortion, ...) advertise BEST_EFFORT and a
-  // BEST_EFFORT subscriber is still compatible with the Livox driver's
-  // RELIABLE publisher.
   const auto sensor_qos = rclcpp::SensorDataQoS();
+  // Livox driver publishes as RELIABLE. While a BEST_EFFORT subscriber is
+  // theoretically compatible, late-joining BEST_EFFORT subscribers often fail
+  // to discover RELIABLE publishers in FastDDS. Use RELIABLE to match driver.
+  const auto sub_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
+  
   // imu_corrector subscribes with default (RELIABLE) QoS, so we must
   // publish IMU as RELIABLE — log77:223 showed it rejecting a
   // BEST_EFFORT publisher with RELIABILITY_QOS_POLICY.
-  const auto reliable_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
+  const auto reliable_pub_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
 
   cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "/livox/lidar", sensor_qos,
+      "/livox/lidar", sub_qos,
       std::bind(&LivoxToAutoware::on_cloud, this, std::placeholders::_1));
   cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
       "/sensing/lidar/left/pointcloud_raw_ex", sensor_qos);
 
   imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-      "/livox/imu", sensor_qos,
+      "/livox/imu", sub_qos,
       std::bind(&LivoxToAutoware::on_imu, this, std::placeholders::_1));
   imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>(
-      "/sensing/imu/tamagawa/imu_raw", reliable_qos);
+      "/sensing/imu/tamagawa/imu_raw", reliable_pub_qos);
 }
 
 void LivoxToAutoware::on_imu(sensor_msgs::msg::Imu::UniquePtr msg)

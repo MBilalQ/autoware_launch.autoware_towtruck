@@ -4,9 +4,9 @@
     wheel_width: 0.095 # rear wheel tire width
     wheel_base: 0.995 # front wheel centre to rear axle centre
     wheel_tread: 0.695 # rear wheel centre-to-centre
-    front_overhang: 0.20 # front axle to vehicle front
+    front_overhang: 0.33 # front axle to vehicle front
     rear_overhang: 0.325 # rear axle to vehicle rear
-    left_overhang: 0.0475 # left wheel centre to vehicle left
-    right_overhang: 0.0475 # right wheel centre to vehicle right
+    left_overhang: 0.1775 # left wheel centre to vehicle left
+    right_overhang: 0.1775 # right wheel centre to vehicle right
     vehicle_height: 1.83
     max_steer_angle: 0.9774 # [rad] ±56°
