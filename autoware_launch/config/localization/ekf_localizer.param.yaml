@@ -14,7 +14,7 @@
       # for Pose measurement
       pose_additional_delay: 0.0
       pose_measure_uncertainty_time: 0.01
-      pose_smoothing_steps: 5
+      pose_smoothing_steps: 3
       pose_gate_dist: 49.5 # corresponds to significance level = 10^-10
 
     twist_measurement:
@@ -25,9 +25,9 @@
 
     process_noise:
       # for process model
-      proc_stddev_yaw_c: 0.005
+      proc_stddev_yaw_c: 0.01
       proc_stddev_vx_c: 10.0
-      proc_stddev_wz_c: 5.0
+      proc_stddev_wz_c: 8.0
 
     simple_1d_filter_parameters:
       #Simple1DFilter parameters

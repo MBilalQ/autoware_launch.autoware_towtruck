@@ -20,10 +20,10 @@ launch:
       default: "false" # Warning, experimental module, use only in simulations
   - arg:
       name: launch_lane_change_right_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_lane_change_left_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_external_request_lane_change_right_module
       default: "false"
@@ -38,24 +38,24 @@ launch:
       default: "true"
   - arg:
       name: launch_side_shift_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_bidirectional_traffic_module
-      default: "true"
+      default: "false"
 
   # behavior velocity modules
   - arg:
       name: launch_crosswalk_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_walkway_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_traffic_light_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_intersection_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_roundabout_module
       default: "false"
@@ -70,7 +70,7 @@ launch:
       default: "true"
   - arg:
       name: launch_virtual_traffic_light_module
-      default: "true"
+      default: "false"
   - arg:
       name: launch_no_stopping_area_module
       default: "true"
@@ -145,7 +145,7 @@ launch:
   # parking modules
   - arg:
       name: launch_parking_module
-      default: "true"
+      default: "false"
 
   # validator modules
   - arg:

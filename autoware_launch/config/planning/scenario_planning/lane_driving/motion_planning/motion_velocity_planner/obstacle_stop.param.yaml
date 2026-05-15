@@ -6,17 +6,17 @@
         suppress_sudden_stop: false
 
       stop_planning:
-        stop_margin : 1.0 # longitudinal margin to obstacle [m]
-        terminal_stop_margin : 0.5 # Stop margin at the goal. This value cannot exceed stop margin. [m]
-        min_behavior_stop_margin: 0.5 # [m]
-        behavior_stop_margin_hold_time: 2.0 # [s] time to hold the min_behavior_stop_margin after disappearing the behavior stop point
+        stop_margin : 3.0 # longitudinal margin to obstacle [m]
+        terminal_stop_margin : 2.0 # Stop margin at the goal. This value cannot exceed stop margin. [m]
+        min_behavior_stop_margin: 2.0 # [m]
+        behavior_stop_margin_hold_time: 1.0 # [s] time to hold the min_behavior_stop_margin after disappearing the behavior stop point
 
         max_negative_velocity: -100.0 # [m/s] maximum velocity of opposing traffic to consider stop planning
         stop_margin_opposing_traffic: 10.0 # Ideal stop-margin from moving opposing obstacle when ego comes to a stop
         effective_deceleration_opposing_traffic: 4.0 # Setting a higher value brings the final stop-margin closer to the ideal value above
 
         min_on_duration: 0.3  # [s] minimum duration needed before a decision can be triggered
-        min_off_duration: 1.0  # [s] minimum duration needed before a decision can be canceled
+        min_off_duration: 0.5  # [s] minimum duration needed before a decision can be canceled
         update_distance_th: 0.5 # [m] minimum distance threshold to update stop point
 
         hold_stop_velocity_threshold: 0.01 # The maximum ego velocity to hold stopping [m/s]
@@ -68,9 +68,9 @@
 
         lateral_margin: # lateral margin between the obstacles and ego's footprint
           nominal:
-            default: 0.3
-            unknown: 0.3
-            pointcloud: 0.3
+            default: 0.1
+            unknown: 0.1
+            pointcloud: 0.1
           additional: # additional stop margin to the obstacle.
             wheel_off_track_scale: # scale factor for additional stop margin against ego's wheel off-track. Even if this value is set to 0.0, the planner considers the nominal wheel off-track.
               default: 0.0
