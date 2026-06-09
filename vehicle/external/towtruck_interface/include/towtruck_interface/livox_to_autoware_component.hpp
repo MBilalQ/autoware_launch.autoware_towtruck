@@ -30,6 +30,9 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr    cloud_pub_;
 
+  // IMU bridge is optional — only the left MID-360's onboard IMU is bridged
+  // to tamagawa/imu_link. The right unit is configured with
+  // enable_imu_bridge=false so it doesn't fight the left one on the same topic.
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr    imu_pub_;
 };

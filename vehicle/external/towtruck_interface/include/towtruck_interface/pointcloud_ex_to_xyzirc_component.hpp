@@ -25,7 +25,6 @@ private:
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr    pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr    concat_pub_;
 };
 
 }  // namespace towtruck_interface

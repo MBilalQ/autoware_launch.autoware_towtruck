@@ -1,27 +1,31 @@
-# Single-Livox MID-360 preprocessing chain.
+# Dual Livox MID-360 preprocessing chain.
 #
 # All nodes load into pointcloud_container as composable nodes with
-# intra-process comms — zero-copy from livox_bridge through the filter
-# chain to the concatenated-topic publisher.
+# intra-process comms — zero-copy from each livox_bridge through the
+# per-lidar filter chain into the concatenator.
 #
-# Pipeline:
-#   /livox/lidar (inter-process, from livox_ros_driver2)
-#     -> LivoxToAutoware (C++)        -> pointcloud_raw_ex (PointXYZIRCAEDT, frame velodyne_left)
-#     -> CropBoxFilter "self"         -> self_cropped/pointcloud_ex
-#     -> CropBoxFilter "mirror"       -> mirror_cropped/pointcloud_ex
-#     -> DistortionCorrector          -> rectified/pointcloud_ex
-#     -> PointCloudExToXyzirc (C++)   publishes both:
-#                                       /sensing/lidar/left/pointcloud_before_sync
-#                                       /sensing/lidar/concatenated/pointcloud
+# Pipeline (mirrored per side):
+#   /livox/lidar    (left  driver)    -> LivoxToAutoware  -> /sensing/lidar/left/pointcloud_raw_ex   (frame velodyne_left)
+#   /livox/lidar2   (right driver)    -> LivoxToAutoware  -> /sensing/lidar/right/pointcloud_raw_ex  (frame velodyne_right)
 #
-# Why no concatenator: PointCloudConcatenateDataSynchronizerComponent refuses
-# to start with a single input topic ("Need at least two topics to continue").
-# The format-stripper double-publishes for now; add the concat node back when
-# a second lidar comes online.
+#   per side:
+#     pointcloud_raw_ex
+#       -> CropBoxFilter "self"       -> self_cropped/pointcloud_ex
+#       -> CropBoxFilter "mirror"     -> mirror_cropped/pointcloud_ex
+#       -> DistortionCorrector        -> rectified/pointcloud_ex
+#       -> PointCloudExToXyzirc       -> pointcloud_before_sync
+#
+#   PointCloudConcatenateDataSynchronizerComponent
+#       inputs:  /sensing/lidar/{left,right}/pointcloud_before_sync
+#       output:  /sensing/lidar/concatenated/pointcloud  (output_frame = base_link)
+#
+# Only the left MID-360's onboard IMU is bridged to tamagawa/imu_link
+# (enable_imu_bridge=true on left, false on right) — tamagawa/imu_link is
+# physically tied to the left unit per sensor_kit.xacro.
 #
 # ring_outlier_filter is intentionally skipped — the MID-360's non-repetitive
-# scan has no rings; replacing it with the format stripper keeps the layout
-# check happy without dropping good points.
+# scan has no rings; PointCloudExToXyzirc replaces it functionally by doing
+# the AEDT->XYZIRC layout strip the concatenator wants.
 
 import os
 
@@ -37,7 +41,7 @@ from launch_ros.parameter_descriptions import ParameterFile
 
 VEHICLE_DESCRIPTION_PKG = "autoware_towtruck_vehicle_description"
 COMMON_SENSOR_PKG = "common_sensor_launch"
-LIDAR_NAMESPACE = "/sensing/lidar/left"
+SENSOR_KIT_PKG = "autoware_towtruck_sensor_kit_launch"
 
 
 def _load_yaml(path):
@@ -65,6 +69,87 @@ def _vehicle_self_bbox():
     }
 
 
+def _side_chain(
+    *,
+    side: str,
+    lidar_frame: str,
+    input_cloud_topic: str,
+    input_imu_topic: str,
+    enable_imu_bridge: bool,
+    self_params: dict,
+    mirror_params: dict,
+    distortion_param,
+):
+    """Build the 5-node preprocessing chain for one lidar side."""
+    ns = f"/sensing/lidar/{side}"
+    return [
+        # Livox -> Autoware bridge (C++, intra-process to the cropbox below).
+        ComposableNode(
+            package="towtruck_interface",
+            plugin="towtruck_interface::LivoxToAutoware",
+            name=f"livox_to_autoware_{side}",
+            parameters=[{
+                "lidar_frame_id":     lidar_frame,
+                "imu_frame_id":       "tamagawa/imu_link",
+                "input_cloud_topic":  input_cloud_topic,
+                "output_cloud_topic": f"{ns}/pointcloud_raw_ex",
+                "input_imu_topic":    input_imu_topic,
+                "enable_imu_bridge":  enable_imu_bridge,
+            }],
+            extra_arguments=[{"use_intra_process_comms": True}],
+        ),
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
+            name="crop_box_filter_self",
+            namespace=ns,
+            remappings=[
+                ("input",  "pointcloud_raw_ex"),
+                ("output", "self_cropped/pointcloud_ex"),
+            ],
+            parameters=[self_params],
+            extra_arguments=[{"use_intra_process_comms": True}],
+        ),
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
+            name="crop_box_filter_mirror",
+            namespace=ns,
+            remappings=[
+                ("input",  "self_cropped/pointcloud_ex"),
+                ("output", "mirror_cropped/pointcloud_ex"),
+            ],
+            parameters=[mirror_params],
+            extra_arguments=[{"use_intra_process_comms": True}],
+        ),
+        ComposableNode(
+            package="autoware_pointcloud_preprocessor",
+            plugin="autoware::pointcloud_preprocessor::DistortionCorrectorComponent",
+            name="distortion_corrector_node",
+            namespace=ns,
+            remappings=[
+                ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
+                ("~/input/imu", "/sensing/imu/imu_data"),
+                ("~/input/pointcloud", "mirror_cropped/pointcloud_ex"),
+                ("~/output/pointcloud", "rectified/pointcloud_ex"),
+            ],
+            parameters=[distortion_param],
+            extra_arguments=[{"use_intra_process_comms": True}],
+        ),
+        # Format stripper: AEDT (32 B) -> XYZIRC (16 B) for the concatenator.
+        ComposableNode(
+            package="towtruck_interface",
+            plugin="towtruck_interface::PointCloudExToXyzirc",
+            name=f"pointcloud_ex_to_xyzirc_{side}",
+            parameters=[{
+                "input_topic":  f"{ns}/rectified/pointcloud_ex",
+                "output_topic": f"{ns}/pointcloud_before_sync",
+            }],
+            extra_arguments=[{"use_intra_process_comms": True}],
+        ),
+    ]
+
+
 def launch_setup(context, *args, **kwargs):
     container = LaunchConfiguration("pointcloud_container_name")
 
@@ -73,6 +158,15 @@ def launch_setup(context, *args, **kwargs):
             get_package_share_directory(COMMON_SENSOR_PKG),
             "config",
             "distortion_corrector_node.param.yaml",
+        ),
+        allow_substs=True,
+    )
+
+    concat_param = ParameterFile(
+        os.path.join(
+            get_package_share_directory(SENSOR_KIT_PKG),
+            "config",
+            "concatenate_and_time_sync_node.param.yaml",
         ),
         allow_substs=True,
     )
@@ -100,70 +194,51 @@ def launch_setup(context, *args, **kwargs):
         "max_z": mirror_box["max_height_offset"],
     }
 
-    composable_nodes = [
+    # Topic names follow the multi-lidar driver convention: with multi_topic=1
+    # the livox_ros_driver2 publishes per-lidar on /livox/lidar_<ip-with-underscores>.
+    # See livox_ros_driver2/src/lddc.cpp line 650.
+    composable_nodes = []
+    composable_nodes += _side_chain(
+        side="left",
+        lidar_frame="velodyne_left",
+        input_cloud_topic="/livox/lidar_192_168_1_137",
+        input_imu_topic="/livox/imu_192_168_1_137",
+        enable_imu_bridge=True,
+        self_params=self_params,
+        mirror_params=mirror_params,
+        distortion_param=distortion_param,
+    )
+    composable_nodes += _side_chain(
+        side="right",
+        lidar_frame="velodyne_right",
+        input_cloud_topic="/livox/lidar_192_168_2_105",
+        input_imu_topic="/livox/imu_192_168_2_105",
+        enable_imu_bridge=False,
+        self_params=self_params,
+        mirror_params=mirror_params,
+        distortion_param=distortion_param,
+    )
 
+    # Multi-lidar concatenator. Subscribes to the per-side
+    # pointcloud_before_sync topics (listed in the YAML) and emits the
+    # combined cloud on /sensing/lidar/concatenated/pointcloud, transformed
+    # into base_link via TF (sensor_kit_calibration.yaml has both
+    # velodyne_{left,right}_base_link static transforms).
+    composable_nodes.append(
         ComposableNode(
             package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="crop_box_filter_self",
-            namespace=LIDAR_NAMESPACE,
-            remappings=[
-                ("input", "pointcloud_raw_ex"),
-                ("output", "self_cropped/pointcloud_ex"),
-            ],
-            parameters=[self_params],
-            extra_arguments=[{"use_intra_process_comms": True}],
-        ),
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::CropBoxFilterComponent",
-            name="crop_box_filter_mirror",
-            namespace=LIDAR_NAMESPACE,
-            remappings=[
-                ("input", "self_cropped/pointcloud_ex"),
-                ("output", "mirror_cropped/pointcloud_ex"),
-            ],
-            parameters=[mirror_params],
-            extra_arguments=[{"use_intra_process_comms": True}],
-        ),
-        ComposableNode(
-            package="autoware_pointcloud_preprocessor",
-            plugin="autoware::pointcloud_preprocessor::DistortionCorrectorComponent",
-            name="distortion_corrector_node",
-            namespace=LIDAR_NAMESPACE,
+            plugin="autoware::pointcloud_preprocessor::PointCloudConcatenateDataSynchronizerComponent",
+            name="concatenate_data",
+            namespace="/sensing/lidar",
             remappings=[
                 ("~/input/twist", "/sensing/vehicle_velocity_converter/twist_with_covariance"),
-                ("~/input/imu", "/sensing/imu/imu_data"),
-                ("~/input/pointcloud", "mirror_cropped/pointcloud_ex"),
-                ("~/output/pointcloud", "rectified/pointcloud_ex"),
+                ("output", "concatenated/pointcloud"),
+                ("output_info", "concatenated/pointcloud_info"),
             ],
-            parameters=[distortion_param],
+            parameters=[concat_param],
             extra_arguments=[{"use_intra_process_comms": True}],
-        ),
-        # Format stripper + N=1 stand-in for the concatenator (C++).
-        ComposableNode(
-            package="towtruck_interface",
-            plugin="towtruck_interface::PointCloudExToXyzirc",
-            name="pointcloud_ex_to_xyzirc",
-            parameters=[{
-                "input_topic":       f"{LIDAR_NAMESPACE}/rectified/pointcloud_ex",
-                "output_topic":      f"{LIDAR_NAMESPACE}/pointcloud_before_sync",
-                "concatenated_topic": "/sensing/lidar/concatenated/pointcloud",
-            }],
-            extra_arguments=[{"use_intra_process_comms": True}],
-        ),
-        # Livox -> Autoware bridge (C++, intra-process to the cropbox below).
-        ComposableNode(
-            package="towtruck_interface",
-            plugin="towtruck_interface::LivoxToAutoware",
-            name="livox_to_autoware",
-            parameters=[{
-                "lidar_frame_id": "velodyne_left",
-                "imu_frame_id":   "tamagawa/imu_link",
-            }],
-            extra_arguments=[{"use_intra_process_comms": True}],
-        ),
-    ]
+        )
+    )
 
     load_into_container = LoadComposableNodes(
         target_container=container,

@@ -2,18 +2,17 @@
 //
 // Licensed under the Apache License, Version 2.0.
 //
-// Strip PointXYZIRCAEDT (32 B) -> PointXYZIRC (16 B), publish on both
-// the per-lidar pipeline topic and the concatenated topic NDT consumes.
-//
-// Stand-in for ring_outlier_filter (meaningless on MID-360's non-repetitive
-// scan) AND for the multi-lidar concatenator (which refuses N=1).
+// Strip PointXYZIRCAEDT (32 B) -> PointXYZIRC (16 B). Stand-in for
+// ring_outlier_filter, which is meaningless on the MID-360's non-repetitive
+// scan but is the stage that normally produces the PointXYZIRC layout the
+// concatenator expects.
 //
 // The first 16 bytes of PointXYZIRCAEDT are bit-identical to PointXYZIRC
 // (x/y/z/intensity/return_type/channel at the same offsets), so the
 // conversion is a per-point memcpy of the leading 16 bytes.
 //
-// When a second lidar is added, drop the concatenated_topic publisher here
-// and bring back PointCloudConcatenateDataSynchronizerComponent.
+// Downstream of this node, PointCloudConcatenateDataSynchronizerComponent
+// merges the per-lidar streams into /sensing/lidar/concatenated/pointcloud.
 
 #include "towtruck_interface/pointcloud_ex_to_xyzirc_component.hpp"
 
@@ -57,22 +56,15 @@ PointCloudExToXyzirc::PointCloudExToXyzirc(const rclcpp::NodeOptions & options)
       "input_topic", "/sensing/lidar/left/rectified/pointcloud_ex");
   const auto out_topic = this->declare_parameter<std::string>(
       "output_topic", "/sensing/lidar/left/pointcloud_before_sync");
-  const auto concat_topic = this->declare_parameter<std::string>(
-      "concatenated_topic", "/sensing/lidar/concatenated/pointcloud");
 
-  // Pipeline-internal topics stay on sensor_data BEST_EFFORT (matches the
-  // distortion_corrector publisher). The concatenated topic crosses out
-  // of the filter chain into NDT / pose_initializer / etc., which subscribe
-  // with RELIABLE — log77:753 showed this mismatch killing the dataflow.
+  // Pipeline-internal topic — concatenator subscribes BEST_EFFORT on
+  // sensor_data QoS, matching the distortion_corrector publisher upstream.
   const auto sensor_qos = rclcpp::SensorDataQoS();
-  const auto reliable_qos = rclcpp::QoS(rclcpp::KeepLast(5)).reliable();
 
   sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
       in_topic, sensor_qos,
       std::bind(&PointCloudExToXyzirc::on_cloud, this, std::placeholders::_1));
   pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(out_topic, sensor_qos);
-  concat_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-      concat_topic, reliable_qos);
 }
 
 void PointCloudExToXyzirc::on_cloud(sensor_msgs::msg::PointCloud2::UniquePtr msg)
@@ -93,33 +85,26 @@ void PointCloudExToXyzirc::on_cloud(sensor_msgs::msg::PointCloud2::UniquePtr msg
     return;
   }
 
-  // We need to publish twice (intermediate + concatenated). Build the
-  // payload once, then duplicate the message for the second publisher
-  // since intra-process publish takes ownership of the unique_ptr.
-  auto out_a = std::make_unique<sensor_msgs::msg::PointCloud2>();
-  out_a->header = msg->header;
-  out_a->height = 1;
-  out_a->width = static_cast<uint32_t>(n);
-  out_a->is_bigendian = false;
-  out_a->is_dense = msg->is_dense;
-  out_a->point_step = kXyzircPointStep;
-  out_a->row_step = kXyzircPointStep * static_cast<uint32_t>(n);
-  fill_xyzirc_fields(*out_a);
-  out_a->data.resize(out_a->row_step);
+  auto out = std::make_unique<sensor_msgs::msg::PointCloud2>();
+  out->header = msg->header;
+  out->height = 1;
+  out->width = static_cast<uint32_t>(n);
+  out->is_bigendian = false;
+  out->is_dense = msg->is_dense;
+  out->point_step = kXyzircPointStep;
+  out->row_step = kXyzircPointStep * static_cast<uint32_t>(n);
+  fill_xyzirc_fields(*out);
+  out->data.resize(out->row_step);
 
   const uint8_t * src = msg->data.data();
-  uint8_t * dst = out_a->data.data();
+  uint8_t * dst = out->data.data();
   for (size_t i = 0; i < n; ++i) {
     std::memcpy(dst + i * kXyzircPointStep,
                 src + i * kAedtPointStep,
                 kXyzircPointStep);
   }
 
-  // Copy for the second publisher *before* we move out_a.
-  auto out_b = std::make_unique<sensor_msgs::msg::PointCloud2>(*out_a);
-
-  pub_->publish(std::move(out_a));
-  concat_pub_->publish(std::move(out_b));
+  pub_->publish(std::move(out));
 }
 
 }  // namespace towtruck_interface

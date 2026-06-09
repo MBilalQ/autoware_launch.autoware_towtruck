@@ -110,28 +110,40 @@ LivoxToAutoware::LivoxToAutoware(const rclcpp::NodeOptions & options)
   lidar_frame_id_ = this->declare_parameter<std::string>("lidar_frame_id", "velodyne_left");
   imu_frame_id_   = this->declare_parameter<std::string>("imu_frame_id",   "tamagawa/imu_link");
 
+  const auto input_cloud_topic = this->declare_parameter<std::string>(
+      "input_cloud_topic", "/livox/lidar");
+  const auto output_cloud_topic = this->declare_parameter<std::string>(
+      "output_cloud_topic", "/sensing/lidar/left/pointcloud_raw_ex");
+  const auto input_imu_topic = this->declare_parameter<std::string>(
+      "input_imu_topic", "/livox/imu");
+  const auto output_imu_topic = this->declare_parameter<std::string>(
+      "output_imu_topic", "/sensing/imu/tamagawa/imu_raw");
+  const auto enable_imu_bridge = this->declare_parameter<bool>("enable_imu_bridge", true);
+
   const auto sensor_qos = rclcpp::SensorDataQoS();
   // Livox driver publishes as RELIABLE. While a BEST_EFFORT subscriber is
   // theoretically compatible, late-joining BEST_EFFORT subscribers often fail
   // to discover RELIABLE publishers in FastDDS. Use RELIABLE to match driver.
   const auto sub_qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
-  
+
   // imu_corrector subscribes with default (RELIABLE) QoS, so we must
   // publish IMU as RELIABLE — log77:223 showed it rejecting a
   // BEST_EFFORT publisher with RELIABILITY_QOS_POLICY.
   const auto reliable_pub_qos = rclcpp::QoS(rclcpp::KeepLast(50)).reliable();
 
   cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-      "/livox/lidar", sub_qos,
+      input_cloud_topic, sub_qos,
       std::bind(&LivoxToAutoware::on_cloud, this, std::placeholders::_1));
   cloud_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
-      "/sensing/lidar/left/pointcloud_raw_ex", sensor_qos);
+      output_cloud_topic, sensor_qos);
 
-  imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-      "/livox/imu", sub_qos,
-      std::bind(&LivoxToAutoware::on_imu, this, std::placeholders::_1));
-  imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>(
-      "/sensing/imu/tamagawa/imu_raw", reliable_pub_qos);
+  if (enable_imu_bridge) {
+    imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
+        input_imu_topic, sub_qos,
+        std::bind(&LivoxToAutoware::on_imu, this, std::placeholders::_1));
+    imu_pub_ = this->create_publisher<sensor_msgs::msg::Imu>(
+        output_imu_topic, reliable_pub_qos);
+  }
 }
 
 void LivoxToAutoware::on_imu(sensor_msgs::msg::Imu::UniquePtr msg)
